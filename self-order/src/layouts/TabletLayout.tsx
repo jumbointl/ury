@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { useIdleReset } from '../hooks/useIdleReset'
 import { useOrderingSession } from '../hooks/useOrderingSession'
 import type { OrderingContext } from '../lib/api'
+import { t } from '../lib/i18n'
 import CartPanel from './shared/CartPanel'
 import MenuGrid from './shared/MenuGrid'
 
@@ -45,7 +46,7 @@ function TabletLayout({ initialContext }: LayoutProps) {
   const idleResetTimerRef = useRef<ReturnType<typeof setTimeout>>()
 
   function handleReset() {
-    if (window.confirm('Start a new order? Current cart will be cleared.')) {
+    if (window.confirm(t('new_order_confirm'))) {
       resetSession()
     }
   }
@@ -73,7 +74,7 @@ function TabletLayout({ initialContext }: LayoutProps) {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">
-        Loading menu…
+        {t('loading_menu')}
       </div>
     )
   }
@@ -90,13 +91,13 @@ function TabletLayout({ initialContext }: LayoutProps) {
     <div className="flex h-screen flex-col overflow-hidden">
       <header className="flex items-center justify-between border-b bg-background/95 px-6 py-4">
         <h1 className="text-xl font-semibold">
-          {context?.table ? `Table ${context.table}` : 'Order for Pickup'}
+          {context?.table ? t('table_title', { table: context.table }) : t('pickup_title')}
         </h1>
         <button
           onClick={handleReset}
           className="rounded-md border px-3 py-2 text-sm font-medium text-muted-foreground"
         >
-          New Order
+          {t('new_order')}
         </button>
       </header>
 
@@ -138,14 +139,14 @@ function TabletLayout({ initialContext }: LayoutProps) {
       <Dialog open={showIdleWarning} onOpenChange={(open) => !open && handleStillHere()}>
         <DialogContent onClose={handleStillHere}>
           <DialogHeader>
-            <DialogTitle>Still there?</DialogTitle>
+            <DialogTitle>{t('still_there')}</DialogTitle>
           </DialogHeader>
           <DialogFooter>
             <button
               onClick={handleStillHere}
               className="w-full rounded-md bg-primary py-3 text-base font-medium text-primary-foreground"
             >
-              I'm still here
+              {t('im_here')}
             </button>
           </DialogFooter>
         </DialogContent>

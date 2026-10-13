@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   addItems,
+  applyContextLocale,
   bootstrap,
   createPaymentRequest,
   getCurrentOrder,
@@ -12,6 +13,7 @@ import {
   type OrderingContext,
   type PaymentRequestResult,
 } from '../lib/api'
+import { t } from '../lib/i18n'
 
 // Same keys api.ts uses internally for sessionStorage persistence. api.ts
 // doesn't expose a clear function (only get/store), so resetSession clears
@@ -62,11 +64,13 @@ export function useOrderingSession(initialContext?: OrderingContext) {
       let ctx: OrderingContext
       if (initialContext) {
         ctx = initialContext
+        applyContextLocale(ctx)
       } else if (token) {
         ctx = await bootstrap(token)
       } else {
         const storedContext = getStoredContext()
         if (storedContext) {
+          applyContextLocale(storedContext)
           // No fresh token in the URL (e.g. a bookmarked/refreshed page)
           // — reuse the full context saved at bootstrap time, not just
           // the session token, so capabilities/table/layout survive a
@@ -74,7 +78,7 @@ export function useOrderingSession(initialContext?: OrderingContext) {
           // actually expires.
           ctx = storedContext
         } else {
-          setError('This link is missing an ordering code. Please rescan the QR code on your table.')
+          setError(t('missing_code'))
           setLoading(false)
           return
         }
@@ -84,7 +88,7 @@ export function useOrderingSession(initialContext?: OrderingContext) {
       setMenu(menuResponse.items.filter((item) => !item.disabled))
       await loadOrder(ctx.session)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to load the menu. Please rescan the QR code.')
+      setError(err instanceof Error ? err.message : t('load_error'))
     } finally {
       setLoading(false)
     }
@@ -164,7 +168,7 @@ export function useOrderingSession(initialContext?: OrderingContext) {
       setOrder(updated)
       setCart({})
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not place the order. Please try again.')
+      setError(err instanceof Error ? err.message : t('order_error'))
     } finally {
       setSubmitting(false)
     }
@@ -176,7 +180,7 @@ export function useOrderingSession(initialContext?: OrderingContext) {
       await requestBill(context.session)
       setBillRequested(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not request the bill. Please ask staff for help.')
+      setError(err instanceof Error ? err.message : t('bill_error'))
     }
   }
 
@@ -193,7 +197,7 @@ export function useOrderingSession(initialContext?: OrderingContext) {
     } catch (err) {
       // Includes the graceful "online payment isn't set up yet" case from
       // the backend — surfaced as a normal error message, not a crash.
-      setError(err instanceof Error ? err.message : 'Could not start online payment. Please pay at the counter.')
+      setError(err instanceof Error ? err.message : t('payment_error'))
     } finally {
       setPayingOnline(false)
     }

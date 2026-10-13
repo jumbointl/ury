@@ -274,6 +274,24 @@ def _resolve_session(session_token):
 # Bootstrap
 # ---------------------------------------------------------------------------
 
+def _currency_info(profile):
+    """Moneda de la empresa del perfil de caja: el cliente anónimo no tiene lo que el POS guarda en
+    localStorage (símbolo, decimales, formato), así que viaja en el contexto. Mismo criterio que
+    pos-store.fetchCurrencySymbol para los decimales."""
+    code = None
+    if profile.pos_profile:
+        code = frappe.db.get_value("POS Profile", profile.pos_profile, "currency")
+        if not code:
+            company = frappe.db.get_value("POS Profile", profile.pos_profile, "company")
+            code = frappe.db.get_value("Company", company, "default_currency") if company else None
+    code = code or frappe.db.get_single_value("Global Defaults", "default_currency") or "INR"
+    cur = frappe.db.get_value("Currency", code, ["symbol", "number_format", "smallest_currency_fraction_value"], as_dict=True) or {}
+    number_format = cur.get("number_format") or frappe.db.get_single_value("System Settings", "number_format")
+    no_decimals = bool(number_format) and (".#" not in number_format and ",#" not in number_format)
+    precision = 0 if no_decimals or (cur.get("smallest_currency_fraction_value") or 0) >= 1 else 2
+    return {"code": code, "symbol": cur.get("symbol") or code, "number_format": number_format, "precision": precision}
+
+
 def _ordering_context_response(raw_session_token, source, profile, table, layout):
     """Shared response shape for every bootstrap-style entry point
     (get_ordering_context, assign_device_table) — never raw branch/table
@@ -288,6 +306,8 @@ def _ordering_context_response(raw_session_token, source, profile, table, layout
         # Landscape Kiosk / Portrait Kiosk) — the frontend layout shell
         # selector uses this, never a client-guessed value.
         "layout": layout,
+        "currency": _currency_info(profile),
+        "language": frappe.db.get_single_value("System Settings", "language") or "en",
         "capabilities": {
             "product_detail_enabled": bool(profile.enable_product_detail_page),
             "show_item_images": bool(profile.show_item_images),

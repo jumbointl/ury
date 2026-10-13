@@ -1,4 +1,5 @@
-import { call } from '@ury/core'
+import { call, storage } from '@ury/core'
+import { setSiteLanguage } from './i18n'
 
 const M = 'ury.ury.api.self_ordering'
 
@@ -23,6 +24,10 @@ export interface OrderingContext {
   table: string | null
   layout: OrderingLayout
   capabilities: OrderingCapabilities
+  // Moneda de la empresa (símbolo/decimales/formato) e idioma del sitio: el cliente no inicia sesión,
+  // así que no tiene los valores que el POS guarda en localStorage.
+  currency?: { code: string; symbol: string; number_format: string | null; precision: number }
+  language?: string | null
 }
 
 export interface MenuItem {
@@ -97,6 +102,22 @@ export function getStoredContext(): OrderingContext | null {
 function storeContext(context: OrderingContext) {
   sessionStorage.setItem(SESSION_KEY, context.session)
   sessionStorage.setItem(CONTEXT_KEY, JSON.stringify(context))
+  applyContextLocale(context)
+}
+
+/** formatCurrency() de @ury/core lee estas claves de localStorage (las mismas que escribe el POS). */
+export function applyContextLocale(context: OrderingContext) {
+  try {
+    if (context.currency) {
+      storage.setItem('currencySymbol', context.currency.symbol || context.currency.code)
+      storage.setItem('currencyCode', context.currency.code)
+      storage.setItem('numberFormat', context.currency.number_format || '')
+      storage.setItem('currencyPrecision', String(context.currency.precision ?? 2))
+    }
+  } catch {
+    /* sin localStorage (modo privado): se muestra con el símbolo por defecto */
+  }
+  setSiteLanguage(context.language)
 }
 
 // Every whitelisted Frappe method response is wrapped as {"message": <actual
