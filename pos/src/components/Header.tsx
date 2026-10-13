@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { t } from '../i18n';
+import { LANGUAGE_MENU } from '../i18n/config';
+import { resolveLanguage } from '../i18n/resolve-language';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Command,
@@ -9,6 +11,7 @@ import {
   LogOut,
   RefreshCw,
   Lock,
+  Languages,
 } from 'lucide-react';
 import { Button, Input } from '@ury/ui';
 import { useRootStore } from '../store/root-store';
@@ -104,6 +107,12 @@ const Header = () => {
     window.location.reload();
   };
 
+  const currentLanguage = resolveLanguage();
+  const handleLanguage = (code: string) => {
+    try { localStorage.setItem('ury_language', code); } catch { /* ignore */ }
+    window.location.reload();
+  };
+
   const handleCloseShift = () => {
     setShowUserMenu(false);
     setShowVoluntaryClosing(true);
@@ -190,6 +199,21 @@ const Header = () => {
                     <Monitor className="w-4 h-4 me-3" />
                     {t('header.switch_to_desk')}
                   </Button>
+                  <div className="px-4 py-2 text-sm text-gray-700">
+                    <div className="flex items-center mb-1"><Languages className="w-4 h-4 me-3" />{t('header.language')}</div>
+                    <div className="flex flex-wrap gap-1 ps-7">
+                      {LANGUAGE_MENU.map((l) => (
+                        <button
+                          key={l.code}
+                          type="button"
+                          onClick={() => handleLanguage(l.code)}
+                          className={`px-2 py-1 rounded border text-xs ${currentLanguage === l.code ? 'bg-primary-500 text-white border-primary-500' : 'border-gray-300 hover:bg-gray-100'}`}
+                        >
+                          {l.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <Button
                     variant="ghost"
                     className="flex justify-start items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"

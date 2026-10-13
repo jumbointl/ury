@@ -30,7 +30,8 @@
     "close_shift": "Clôturer la session",
     "switch_to_desk": "Accéder au bureau",
     "clear_cache": "Vider le cache",
-    "logout": "Déconnexion"
+    "logout": "Déconnexion",
+    "language": "Langue"
   },
   "menu": {
     "special_items": "Plats spéciaux"
