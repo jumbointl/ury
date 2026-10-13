@@ -407,5 +407,28 @@
     "paid": "Payé",
     "consolidated": "Consolidé",
     "return": "Retour"
+  },
+  "closed": {
+    "fix_customer": "Corriger le client",
+    "nominate": "Nommer la facture",
+    "not_sent": "non envoyée à SIFEN",
+    "unavailable": "Indisponible",
+    "reason_placeholder": "Motif (facultatif)",
+    "nominated": "Facture nommée à {{customer}} dans SIFEN",
+    "amended": "Réémise comme {{invoice}} avec le numéro {{numero}}",
+    "return_title": "Retour (avoir)",
+    "return_help": "Choisissez ce qui revient et sa destination : stock ou perte.",
+    "item": "Article",
+    "available": "Reste",
+    "qty": "Retour",
+    "destination": "Destination",
+    "restock": "Retour en stock",
+    "loss": "Perte",
+    "refund": "Rembourser {{amount}}",
+    "return_confirm": "Confirmer le retour",
+    "returned": "Retour {{invoice}} de {{amount}} émis ({{numero}})",
+    "cancelled_to_loss": "Commande annulée et passée en perte",
+    "pin_help": "La cuisine a déjà préparé une partie de cette commande. Un PIN admin est requis pour annuler (perte).",
+    "pin_placeholder": "PIN admin"
   }
 }

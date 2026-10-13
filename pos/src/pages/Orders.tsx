@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Clock, User, UserCheck, Receipt, Printer, Pencil, X, GitBranch, GitMerge } from 'lucide-react';
+import { Clock, User, UserCheck, Receipt, Printer, Pencil, X, GitBranch, GitMerge, UserCog, Undo2 } from 'lucide-react';
 import { Badge, Button, Card, CardContent } from '@ury/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@ury/ui';
 import { showToast } from '@ury/ui';
@@ -16,6 +16,7 @@ import BillMergeDialog from '../components/BillMergeDialog';
 import OrderActionsMenu from '../components/OrderActionsMenu';
 import SplitGroupPanel from '../components/SplitGroupPanel';
 import MergedBillPanel from '../components/MergedBillPanel';
+import { ClienteDialog, DevolucionDialog, isClosedOrder } from '../components/ClosedOrderActions';
 import { printOrder } from '../lib/print';
 import { call } from '@ury/core';
 import { splitBill } from '../lib/order-api';
@@ -80,6 +81,11 @@ export default function Orders() {
   const [showPaymentDialog, setShowPaymentDialog] = React.useState(false);
   const [showSplitDialog, setShowSplitDialog] = React.useState(false);
   const [showMergeDialog, setShowMergeDialog] = React.useState(false);
+  const [showClienteDialog, setShowClienteDialog] = React.useState(false);
+  const [showDevolucionDialog, setShowDevolucionDialog] = React.useState(false);
+  // Anulación con PIN (caja_pos): la cocina ya preparó algo del pedido
+  const [cancelPin, setCancelPin] = React.useState('');
+  const [pinRequired, setPinRequired] = React.useState(false);
   const [orderActionsMenuOpen, setOrderActionsMenuOpen] = React.useState(false);
   const [isPrinting, setIsPrinting] = React.useState(false);
   const [canCancelInvoice, setCanCancelInvoice] = React.useState(false);
@@ -191,17 +197,27 @@ export default function Orders() {
     }
     setCancelLoading(true);
     try {
-      await call.post('ury.ury.doctype.ury_order.ury_order.cancel_order', {
-        invoice_id: selectedOrder.name,
-        reason: cancelReason
-      })
-      showToast.success(t('success.order_cancelled'));
+      const r: any = await call.post('caja_pos.api.anular_pedido', {
+        invoice: selectedOrder.name,
+        reason: cancelReason,
+        pin: cancelPin || null,
+      });
+      const data = r?.message ?? r;
+      showToast.success(data?.a_perdida ? t('closed.cancelled_to_loss') : t('success.order_cancelled'));
       setCancelDialogOpen(false);
       setCancelReason('');
+      setCancelPin('');
+      setPinRequired(false);
       clearSelectedOrder();
       fetchOrders();
     } catch (err) {
-      showToast.error(parseFrappeError(err, t('errors.failed_cancel_order')));
+      const msg = parseFrappeError(err, t('errors.failed_cancel_order'));
+      if (/PIN_REQUERIDO/.test(msg)) {
+        setPinRequired(true);
+        showToast.error(msg.replace(/^PIN_REQUERIDO:\s*/, ''));
+      } else {
+        showToast.error(msg);
+      }
     } finally {
       setCancelLoading(false);
     }
@@ -629,6 +645,20 @@ export default function Orders() {
                   disabled={cancelLoading}
                   autoFocus
                 />
+                {pinRequired && (
+                  <div className="mt-3">
+                    <p className="text-sm text-amber-700 mb-1">{t('closed.pin_help')}</p>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      placeholder={t('closed.pin_placeholder')}
+                      value={cancelPin}
+                      onChange={e => setCancelPin(e.target.value)}
+                      disabled={cancelLoading}
+                      className="h-9 w-full rounded-md border border-gray-300 px-2 text-sm"
+                    />
+                  </div>
+                )}
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setCancelDialogOpen(false)} disabled={cancelLoading}>
@@ -733,6 +763,17 @@ export default function Orders() {
                 >
                   {isPrinting ? <Spinner className="w-5 h-5" hideMessage  message={t('common.loading')} /> : <Printer className="w-5 h-5" />}
                 </Button>
+                {/* Closed order (caja_pos): fix customer / nominate, return */}
+                {isClosedOrder(selectedOrder.status) && String(selectedOrder.docstatus ?? 1) !== '0' && (
+                  <>
+                    <Button variant="outline" size="icon" className="flex-shrink-0" aria-label={t('closed.fix_customer')} title={t('closed.fix_customer')} onClick={() => setShowClienteDialog(true)}>
+                      <UserCog className="w-5 h-5" />
+                    </Button>
+                    <Button variant="outline" size="icon" className="flex-shrink-0" aria-label={t('closed.return_title')} title={t('closed.return_title')} onClick={() => setShowDevolucionDialog(true)}>
+                      <Undo2 className="w-5 h-5" />
+                    </Button>
+                  </>
+                )}
                 {/* Payment Button - Only show for Draft, Unbilled, and Recently Paid orders */}
                 {isOrderEditable(selectedOrder.status) && (
                   <Button
@@ -781,6 +822,12 @@ export default function Orders() {
           discountPercentage={selectedOrder.additional_discount_percentage}
           discountAmount={selectedOrder.discount_amount}
         />
+      )}
+      {selectedOrder && (
+        <ClienteDialog open={showClienteDialog} onOpenChange={setShowClienteDialog} invoice={selectedOrder.name} onDone={async () => { clearSelectedOrder(); await fetchOrders(); }} />
+      )}
+      {selectedOrder && (
+        <DevolucionDialog open={showDevolucionDialog} onOpenChange={setShowDevolucionDialog} invoice={selectedOrder.name} onDone={async () => { clearSelectedOrder(); await fetchOrders(); }} />
       )}
       {selectedOrder && (
         <BillMergeDialog

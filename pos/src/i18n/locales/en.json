@@ -434,5 +434,28 @@
     "paid": "Paid",
     "consolidated": "Consolidated",
     "return": "Return"
+  },
+  "closed": {
+    "fix_customer": "Fix customer",
+    "nominate": "Name the invoice (nominate)",
+    "not_sent": "not sent to SIFEN",
+    "unavailable": "Not available",
+    "reason_placeholder": "Reason (optional)",
+    "nominated": "Invoice named to {{customer}} in SIFEN",
+    "amended": "Re-issued as {{invoice}} with number {{numero}}",
+    "return_title": "Return (credit note)",
+    "return_help": "Choose what comes back and where it goes: back to stock or loss.",
+    "item": "Item",
+    "available": "Left",
+    "qty": "Return",
+    "destination": "Destination",
+    "restock": "Back to stock",
+    "loss": "Loss",
+    "refund": "Refund {{amount}}",
+    "return_confirm": "Confirm return",
+    "returned": "Return {{invoice}} for {{amount}} issued ({{numero}})",
+    "cancelled_to_loss": "Order cancelled and sent to loss",
+    "pin_help": "The kitchen already prepared part of this order. An admin PIN is needed to cancel it (goes to loss).",
+    "pin_placeholder": "Admin PIN"
   }
 }
