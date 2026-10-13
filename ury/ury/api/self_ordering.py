@@ -890,6 +890,12 @@ def request_bill(session, documento=None, nombre=None, email=None, direccion=Non
             if invoice.docstatus == 0 and invoice.customer != customer:
                 invoice.customer = customer
                 invoice.customer_name = frappe.db.get_value("Customer", customer, "customer_name")
+                # Contact/address belong to the previous customer ("Contact Person does not belong
+                # to ..."): clear them so ERPNext refills them for the new one on save.
+                for campo in ("contact_person", "contact_display", "contact_mobile", "contact_email",
+                              "customer_address", "address_display", "shipping_address_name", "shipping_address"):
+                    if invoice.meta.has_field(campo):
+                        invoice.set(campo, None)
                 invoice.save(ignore_permissions=True)
             customer_name = frappe.db.get_value("Customer", customer, "customer_name")
         existing = frappe.db.exists(
