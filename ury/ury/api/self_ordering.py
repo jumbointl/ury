@@ -553,7 +553,7 @@ def add_customer_items(session, items):
         with _elevated():
             existing_invoice = frappe.get_all(
                 "POS Invoice",
-                filters={"docstatus": 0, "invoice_printed": 0},
+                filters={"docstatus": 0},
                 or_filters={
                     "restaurant_table": session.table,
                     "custom_merged_tables": ["like", f"%{session.table}%"],
@@ -606,8 +606,28 @@ def add_customer_items(session, items):
     with _elevated():
         _ensure_admin_branch_mapping(profile.branch)
 
+        invoice_no = session.invoice
+        if session.table and not invoice_no:
+            # The table's unpaid order, even if the bill was already requested/printed (a guest who
+            # asks for the bill, then orders dessert): reopen it instead of starting a second invoice
+            # on the same table, so the cashier charges one bill. Pablo 13-10-2026 (Floreant behaviour).
+            abierta = frappe.get_all(
+                "POS Invoice",
+                filters={"docstatus": 0},
+                or_filters={"restaurant_table": session.table, "custom_merged_tables": ["like", f"%{session.table}%"]},
+                fields=["name", "invoice_printed"],
+                order_by="creation desc",
+                limit=1,
+            )
+            if abierta:
+                invoice_no = abierta[0].name
+                if abierta[0].invoice_printed:
+                    frappe.db.set_value("POS Invoice", invoice_no, "invoice_printed", 0, update_modified=False)
+                    frappe.db.set_value(
+                        "URY Table", session.table, {"occupied": 1, "latest_invoice_time": now_datetime()}, update_modified=False
+                    )
         invoice, invoice_name = _resolve_or_create_pos_invoice(
-            table=session.table, invoiceNo=session.invoice, order_type=order_type, is_payment=None,
+            table=session.table, invoiceNo=invoice_no, order_type=order_type, is_payment=None,
             check_permission=False, override_branch=profile.branch,
         )
 
