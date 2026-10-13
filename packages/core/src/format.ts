@@ -16,6 +16,17 @@ const NUMBER_FORMAT_LOCALES: Record<string, string> = {
   '#.###': 'de-DE',
   '#,###': 'en-US',
 };
+export function localeFor(fmt?: string | null): string {
+  return (fmt && NUMBER_FORMAT_LOCALES[fmt]) || numberLocale();
+}
+/** Monto en una moneda cualquiera (multimoneda): símbolo + decimales + formato propios. */
+export function formatMoney(amount: number, symbol: string, decimals: number = 2, locale?: string): string {
+  const rounded = flt(amount, decimals);
+  const formatted = typeof rounded === 'number' && !isNaN(rounded)
+    ? rounded.toLocaleString(locale || numberLocale(), { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+    : rounded;
+  return `${symbol} ${formatted}`;
+}
 export function numberLocale(): string {
   const fmt = storage.getItem('numberFormat') || '';
   return NUMBER_FORMAT_LOCALES[fmt] || 'en-IN';

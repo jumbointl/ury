@@ -1,11 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { X, Percent, Coins } from 'lucide-react';
 import { usePOSStore } from '../store/pos-store';
-import { formatCurrency, call, parseFrappeError } from '@ury/core';
+import { formatCurrency, formatMoney, localeFor, call, parseFrappeError } from '@ury/core';
 import { Button, Input, Dialog, DialogContent, showToast } from '@ury/ui';
 import { DEFAULT_PAYMENT_MODE } from '../data/order-types';
 import { t } from '../i18n';
 
+/**
+ * Multimoneda (app `multimoneda` de Frappe): el cajero puede recibir cada medio de pago en otra moneda.
+ * El monto que viaja a ERPNext (`amount`) sigue en la moneda de la factura; la moneda, el monto recibido y
+ * la cotización van en campos propios de la línea de pago. Sin la app instalada, el diálogo se comporta
+ * como el original (una sola moneda).
+ */
+interface MonedaCobro {
+  codigo: string;
+  simbolo: string;
+  tasa: number;        // unidades de la moneda principal por 1 de esta
+  decimales: number;
+  formato?: string;    // number_format de Frappe
+}
+interface MonedasResponse {
+  principal: { codigo: string; simbolo: string; decimales: number; formato?: string };
+  monedas: MonedaCobro[];
+}
+interface PaymentInput { currency: string; amount: string }
 
 interface PaymentDialogProps {
   onClose: () => void;
@@ -22,6 +40,30 @@ interface PaymentDialogProps {
   clearSelectedOrder: () => void;
   discountPercentage?: number;
   discountAmount?: number;
+}
+
+const roundTo = (n: number, decimals: number) => {
+  const m = Math.pow(10, decimals);
+  return Math.round(n * m) / m;
+};
+
+async function loadMonedas(): Promise<MonedasResponse | null> {
+  const cached = sessionStorage.getItem('monedas_cobro');
+  if (cached) {
+    try { return JSON.parse(cached); } catch { /* ignore */ }
+  }
+  try {
+    const r: any = await call.get('multimoneda.api.monedas');
+    const data: MonedasResponse = r?.message ?? r;
+    if (data && data.principal) {
+      sessionStorage.setItem('monedas_cobro', JSON.stringify(data));
+      return data;
+    }
+  } catch (e) {
+    // App multimoneda no instalada o sin permiso: una sola moneda.
+    console.warn('multimoneda no disponible:', e);
+  }
+  return null;
 }
 
 const PaymentDialog: React.FC<PaymentDialogProps> = ({
@@ -43,8 +85,8 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
   const { paymentModes, fetchPaymentModes, posProfile: storePosProfile } = usePOSStore();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [discountType] = useState<'percentage'>('percentage'); // Only percentage now
-  
+  const [monedas, setMonedas] = useState<MonedasResponse | null>(null);
+
   // Calculate effective percentage if only amount is provided (for invoice-level discounts)
   const effectivePercentage = discountPercentage 
     ? discountPercentage 
@@ -54,11 +96,37 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
         
   const [discountValue, setDiscountValue] = useState<string>(effectivePercentage > 0 ? String(effectivePercentage) : '');
   const [appliedDiscount, setAppliedDiscount] = useState<number>(discountAmount || 0); // Only tracking transaction discount!
-  const [paymentInputs, setPaymentInputs] = useState<{ [mode: string]: string }>({});
+  const [paymentInputs, setPaymentInputs] = useState<{ [mode: string]: PaymentInput }>({});
 
   useEffect(() => {
     fetchPaymentModes();
+    loadMonedas().then(setMonedas);
   }, [fetchPaymentModes]);
+
+  const principal = monedas?.principal ?? null;
+  const principalCode = principal?.codigo ?? '';
+  const principalDecimals = principal?.decimales ?? 2;
+  const extras: MonedaCobro[] = monedas?.monedas ?? [];
+  const multimoneda = extras.length > 0;
+
+  const monedaDe = (code: string): MonedaCobro | null => extras.find((m) => m.codigo === code) ?? null;
+  const fmt = (amount: number, code?: string) => {
+    if (!code || code === principalCode) return formatCurrency(amount);
+    const m = monedaDe(code);
+    if (!m) return formatCurrency(amount);
+    return formatMoney(amount, m.simbolo, m.decimales, localeFor(m.formato));
+  };
+  // Monto en moneda principal de un pago cargado en `code`.
+  const aPrincipal = (amount: number, code?: string) => {
+    if (!code || code === principalCode) return amount;
+    const m = monedaDe(code);
+    return m ? roundTo(amount * m.tasa, principalDecimals) : amount;
+  };
+  const dePrincipal = (amount: number, code?: string) => {
+    if (!code || code === principalCode) return amount;
+    const m = monedaDe(code);
+    return m && m.tasa > 0 ? roundTo(amount / m.tasa, m.decimales) : amount;
+  };
 
   // baseTotal represents the amount before any invoice-level discount (like pricing rule or manual discount)
   const baseTotal = grandTotal + (discountAmount || 0);
@@ -80,25 +148,35 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
 
   // Order summary logic
   const subtotal = baseTotal;
-  const adjustment = roundedTotal - grandTotal;
-  const roundedAdjustment = Math.round(adjustment * 100) / 100;
-  const showAdjustment = Math.abs(roundedAdjustment) > 0.001;
   const totalDiscount = appliedDiscount;
   const discountedTotal = Math.max(0, subtotal - totalDiscount);
-  // If discount is applied, round up; else, round normally
-  const finalTotal = appliedDiscount > 0 ? Math.ceil(discountedTotal) : Math.round(discountedTotal);
+  // If discount is applied, round up; else, round normally (ERPNext rounds the invoice to the currency's precision)
+  const finalTotal = appliedDiscount > 0
+    ? (principalDecimals === 0 ? Math.ceil(discountedTotal) : roundTo(discountedTotal, principalDecimals))
+    : (principalDecimals === 0 ? Math.round(discountedTotal) : roundTo(roundedTotal, principalDecimals));
 
-  // Calculate split payment total
+  const inputOf = (id: string): PaymentInput => paymentInputs[id] ?? { currency: principalCode, amount: '' };
+
+  // Calculate split payment total (in the invoice currency)
   const payments = paymentModes
     .map((mode: any) => {
       const id = typeof mode === 'string' ? mode : mode.id;
-      const amount = parseFloat(paymentInputs[id] || '');
-      return amount > 0 ? { mode_of_payment: id, amount } : null;
+      const input = inputOf(id);
+      const typed = parseFloat(input.amount || '');
+      if (!(typed > 0)) return null;
+      const currency = input.currency || principalCode;
+      const amount = aPrincipal(typed, currency);
+      if (multimoneda && currency && currency !== principalCode) {
+        const m = monedaDe(currency);
+        return { mode_of_payment: id, amount, moneda_cobro: currency, cotizacion_cobro: m?.tasa, monto_moneda: typed };
+      }
+      return { mode_of_payment: id, amount };
     })
     .filter(Boolean);
-  const paymentsTotal = payments.reduce((sum, p: any) => sum + p.amount, 0);
-  const shortfall = finalTotal - paymentsTotal;
+  const paymentsTotal = roundTo(payments.reduce((sum, p: any) => sum + p.amount, 0), principalDecimals);
+  const shortfall = roundTo(finalTotal - paymentsTotal, principalDecimals);
   const isShort = shortfall > 0.005;
+  const changeDue = roundTo(paymentsTotal - finalTotal, principalDecimals);
 
   const finalAdjustment = finalTotal - discountedTotal;
   const roundedFinalAdjustment = Math.round(finalAdjustment * 100) / 100;
@@ -112,30 +190,41 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
       //check if default payment mode is present in paymentModes
       setPaymentInputs((prev)=>({ 
         ...prev,
-        [DEFAULT_PAYMENT_MODE]:String(finalTotal) 
+        [DEFAULT_PAYMENT_MODE]: { currency: principalCode, amount: String(finalTotal) }
       }))
     }
-  },[finalTotal,paymentModes])
+  },[finalTotal,paymentModes,principalCode])
 
-  // Helper to calculate remaining balance
+  // Helper to calculate remaining balance (invoice currency)
   const getRemainingBalance = (currentId: string) => {
     const totalEntered = Object.entries(paymentInputs)
       .filter(([id]) => id !== currentId)
-      .reduce((sum, [_, val]) => sum + (parseFloat(val) || 0), 0);
-    return Math.max(0, finalTotal - totalEntered);
+      .reduce((sum, [_, val]) => sum + aPrincipal(parseFloat(val.amount) || 0, val.currency), 0);
+    return Math.max(0, roundTo(finalTotal - totalEntered, principalDecimals));
   };
 
-  // Handler for input focus to auto-fill remaining balance
+  // Handler for input focus to auto-fill remaining balance (converted to the row's currency)
   const handlePaymentInputFocus = (id: string) => {
     setPaymentInputs(inputs => {
-      // Only auto-fill if the field is empty or zero
-      if (!inputs[id] || parseFloat(inputs[id]) === 0) {
-        const remaining = getRemainingBalance(id);
-        return { ...inputs, [id]: remaining > 0 ? String(remaining) : '' };
+      const current = inputs[id] ?? { currency: principalCode, amount: '' };
+      if (!current.amount || parseFloat(current.amount) === 0) {
+        const remaining = dePrincipal(getRemainingBalance(id), current.currency);
+        return { ...inputs, [id]: { ...current, amount: remaining > 0 ? String(remaining) : '' } };
       }
       return inputs;
     });
   };
+
+  const setAmount = (id: string, amount: string) =>
+    setPaymentInputs(inputs => ({ ...inputs, [id]: { ...(inputs[id] ?? { currency: principalCode, amount: '' }), amount } }));
+  const setCurrency = (id: string, currency: string) =>
+    setPaymentInputs(inputs => {
+      const current = inputs[id] ?? { currency: principalCode, amount: '' };
+      // Convertir lo ya tipeado a la moneda nueva, para no perder el monto
+      const typed = parseFloat(current.amount || '');
+      const amount = typed > 0 ? String(dePrincipal(aPrincipal(typed, current.currency), currency)) : current.amount;
+      return { ...inputs, [id]: { currency, amount } };
+    });
 
   const handlePayment = async () => {
     setIsProcessing(true);
@@ -208,27 +297,67 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
             </div>
           )}
 
+          {/* Equivalents of the total in every accepted currency */}
+          {multimoneda && (
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm">
+              <div className="font-medium mb-1">{t('payment.equivalents')}</div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {extras.map((m) => (
+                  <span key={m.codigo} className="whitespace-nowrap">
+                    <span className="text-gray-500">{m.codigo}</span>{' '}
+                    <span className="font-semibold">{fmt(dePrincipal(finalTotal, m.codigo), m.codigo)}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Payment Methods Section - Split Payment */}
           <div className="space-y-4 mb-6">
             <h3 className="text-lg font-semibold">{t('payment.payment_methods')}</h3>
             <div className="grid grid-cols-1 gap-3">
               {paymentModes.map((mode: any) => {
                 const id = typeof mode === 'string' ? mode : mode.id;
+                const input = inputOf(id);
+                const typed = parseFloat(input.amount || '');
+                const foreign = multimoneda && input.currency && input.currency !== principalCode;
                 return (
-                  <div key={id} className="flex items-center gap-3">
-                    <span className="w-24 font-medium">{typeof mode === 'string' ? mode : mode.name}</span>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={paymentInputs[id] || ''}
-                      onChange={e => setPaymentInputs(inputs => ({ ...inputs, [id]: e.target.value }))}
-                      onFocus={() => handlePaymentInputFocus(id)}
-                      placeholder={t('payment.amount_placeholder')}
-                      className="flex-1"
-                      size="sm"
-                      disabled={isProcessing}
-                    />
+                  <div key={id} className="flex flex-col gap-1">
+                    <div className="flex items-center gap-3">
+                      <span className="w-24 font-medium">{typeof mode === 'string' ? mode : mode.name}</span>
+                      {multimoneda && (
+                        <select
+                          value={input.currency || principalCode}
+                          onChange={(e) => setCurrency(id, e.target.value)}
+                          disabled={isProcessing}
+                          className="h-9 rounded-md border border-gray-300 bg-white px-2 text-sm"
+                          aria-label={t('payment.currency')}
+                        >
+                          <option value={principalCode}>{principal?.simbolo} {principalCode}</option>
+                          {extras.map((m) => (
+                            <option key={m.codigo} value={m.codigo}>{m.simbolo} {m.codigo}</option>
+                          ))}
+                        </select>
+                      )}
+                      <Input
+                        type="number"
+                        min="0"
+                        step={foreign && monedaDe(input.currency)?.decimales === 0 ? '1' : '0.01'}
+                        value={input.amount}
+                        onChange={e => setAmount(id, e.target.value)}
+                        onFocus={() => handlePaymentInputFocus(id)}
+                        placeholder={t('payment.amount_placeholder')}
+                        className="flex-1"
+                        size="sm"
+                        disabled={isProcessing}
+                      />
+                    </div>
+                    {foreign && typed > 0 && (
+                      <div className="pl-24 text-xs text-gray-500">
+                        {fmt(typed, input.currency)} = {formatCurrency(aPrincipal(typed, input.currency))}
+                        {' '}({t('payment.rate')} 1 {principalCode} = {fmt(dePrincipal(1, input.currency), input.currency)})
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -237,10 +366,10 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
               <span className="font-medium">{t('payment.total_entered')}</span>
               <span className={`${isShort ? 'text-amber-700' : 'text-green-600'} font-semibold flex items-center gap-1`}>
                 {formatCurrency(paymentsTotal)} / {formatCurrency(finalTotal)}
-                {paymentsTotal > finalTotal && (
+                {changeDue > 0.005 && (
                   <span className="text-yellow-700 font-semibold">
                     <Coins className="inline w-4 h-4 ml-1 text-yellow-500" />
-                    <span className="text-yellow-500 font-bold ml-1">{formatCurrency(paymentsTotal - finalTotal)}</span>
+                    <span className="text-yellow-500 font-bold ml-1">{formatCurrency(changeDue)}</span>
                   </span>
                 )}
               </span>
@@ -250,9 +379,14 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
                 {t('payment.short_by', { amount: formatCurrency(shortfall) })}
               </p>
             )}
-            {paymentsTotal > finalTotal && (
+            {changeDue > 0.005 && (
               <p className="text-yellow-700 text-sm font-medium">
-                {t('payment.change_due', { amount: formatCurrency(paymentsTotal - finalTotal) })}
+                {t('payment.change_due', { amount: formatCurrency(changeDue) })}
+                {multimoneda && (
+                  <span className="block text-xs text-gray-500 font-normal">
+                    {extras.map((m) => `${fmt(dePrincipal(changeDue, m.codigo), m.codigo)}`).join(' · ')}
+                  </span>
+                )}
               </p>
             )}
           </div>
@@ -321,4 +455,4 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
   );
 };
 
-export default PaymentDialog; 
+export default PaymentDialog;

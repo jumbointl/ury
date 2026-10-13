@@ -1992,6 +1992,19 @@ def _validate_additional_discount(additional_discount, pos_profile):
     return discount
 
 
+def _fila_pago(d, amount, completo=False):
+    """Línea de pago para la factura. Multimoneda (app `multimoneda`): si el POS mandó la moneda del pago,
+    se conserva con su cotización; el monto en esa moneda sólo cuando la línea no se partió entre facturas
+    (en ese caso lo deriva la validación de multimoneda a partir de `amount`)."""
+    fila = dict(mode_of_payment=d["mode_of_payment"], amount=amount)
+    if d.get("moneda_cobro"):
+        fila["moneda_cobro"] = d.get("moneda_cobro")
+        fila["cotizacion_cobro"] = d.get("cotizacion_cobro")
+        if completo and d.get("monto_moneda") is not None:
+            fila["monto_moneda"] = d.get("monto_moneda")
+    return fila
+
+
 # Method for URY POS
 @frappe.whitelist()
 def make_invoice(customer, payments, cashier, pos_profile,owner, additionalDiscount=None, table=None, invoice=None):
@@ -2044,13 +2057,13 @@ def make_invoice(customer, payments, cashier, pos_profile,owner, additionalDisco
             
             if doc_req > 0:
                 give = min(amt, doc_req)
-                invoice.append("payments", dict(mode_of_payment=mode, amount=give))
+                invoice.append("payments", _fila_pago(d, give))
                 amt -= give
                 doc_req -= give
                 
             if target_req > 0 and amt > 0:
                 give = min(amt, target_req)
-                target.append("payments", dict(mode_of_payment=mode, amount=give))
+                target.append("payments", _fila_pago(d, give))
                 amt -= give
                 target_req -= give
                 
@@ -2065,9 +2078,7 @@ def make_invoice(customer, payments, cashier, pos_profile,owner, additionalDisco
         invoice.flags.ignore_payment_sync = True
     else:
         for d in payments:
-            invoice.append(
-                "payments", dict(mode_of_payment=d["mode_of_payment"], amount=d["amount"])
-            )
+            invoice.append("payments", _fila_pago(d, d["amount"], completo=True))
 
     # invoice.owner = owner
     invoice.save()

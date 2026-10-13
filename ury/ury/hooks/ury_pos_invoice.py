@@ -255,7 +255,10 @@ def sync_merged_invoice(doc):
                     "mode_of_payment": p.mode_of_payment,
                     "amount": target.rounded_total,
                     "base_amount": target.rounded_total,
-                    "account": getattr(p, "account", None)
+                    "account": getattr(p, "account", None),
+                    # multimoneda: misma moneda y cotización; el monto en moneda lo deriva la validación
+                    "moneda_cobro": p.get("moneda_cobro"),
+                    "cotizacion_cobro": p.get("cotizacion_cobro"),
                 })
 
             target.paid_amount = target.rounded_total
