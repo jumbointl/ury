@@ -67,6 +67,24 @@ export interface CustomerOrder {
   items: OrderItem[]
   grand_total: number
   billed: boolean
+  // Cliente de la factura cuando el comensal cargó RUC/cédula al pedir la cuenta (null = consumidor final).
+  customer?: string | null
+}
+
+/** Líneas del pedido agrupadas por plato y comentario (cada ronda agrega filas nuevas en la factura). */
+export function groupOrderItems(items: OrderItem[]): OrderItem[] {
+  const grouped = new Map<string, OrderItem>()
+  for (const row of items) {
+    const key = `${row.item_code}|${row.comment ?? ''}`
+    const existing = grouped.get(key)
+    if (existing) {
+      existing.qty += row.qty
+      existing.amount += row.amount
+    } else {
+      grouped.set(key, { ...row })
+    }
+  }
+  return Array.from(grouped.values())
 }
 
 export interface OrderStatus {
@@ -186,8 +204,18 @@ export async function addItems(
   return response.message
 }
 
-export async function requestBill(session: string): Promise<{ status: string; request: string }> {
-  const response = await call.post<FrappeResponse<{ status: string; request: string }>>(`${M}.request_bill`, { session })
+export interface BillRequestResult {
+  status: string
+  request: string
+  customer?: string | null
+}
+
+export async function requestBill(session: string, documento?: string, nombre?: string): Promise<BillRequestResult> {
+  const response = await call.post<FrappeResponse<BillRequestResult>>(`${M}.request_bill`, {
+    session,
+    documento: documento || '',
+    nombre: nombre || '',
+  })
   return response.message
 }
 

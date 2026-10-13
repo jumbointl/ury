@@ -43,7 +43,7 @@ export function formatCurrency(amount: number): string {
   const decimals = currencyDecimals();
   const roundedAmount = flt(amount, decimals);
   const formattedVal = typeof roundedAmount === 'number' && !isNaN(roundedAmount)
-    ? roundedAmount.toLocaleString(numberLocale(), { maximumFractionDigits: decimals })
+    ? roundedAmount.toLocaleString(numberLocale(), { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
     : roundedAmount;
   return `${symbol} ${formattedVal}`;
 }

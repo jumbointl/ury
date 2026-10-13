@@ -1,5 +1,8 @@
 import { formatCurrency } from '@ury/core'
+import { useState } from 'react'
 import { useOrderingSession } from '../hooks/useOrderingSession'
+import { groupOrderItems } from '../lib/api'
+import BillDialog from './shared/BillDialog'
 import type { OrderingContext } from '../lib/api'
 import { t, tItems } from '../lib/i18n'
 
@@ -29,6 +32,7 @@ function MobileQRLayout({ initialContext }: LayoutProps) {
     cartCount,
     cartTotal,
   } = useOrderingSession(initialContext)
+  const [billOpen, setBillOpen] = useState(false)
 
   function handleStartOver() {
     if (window.confirm(t('start_over_confirm'))) {
@@ -84,13 +88,14 @@ function MobileQRLayout({ initialContext }: LayoutProps) {
             </p>
           )}
           <ul className="space-y-1 text-sm">
-            {order.items.map((row, idx) => (
+            {groupOrderItems(order.items).map((row, idx) => (
               <li key={`${row.item_code}-${idx}`} className="flex justify-between">
                 <span>{row.item_name} × {row.qty}</span>
                 <span className="tabular-nums">{formatCurrency(row.amount)}</span>
               </li>
             ))}
           </ul>
+          {order.customer && <p className="mt-1 text-xs text-muted-foreground">{t('invoice_to', { name: order.customer })}</p>}
           <div className="mt-2 flex justify-between border-t pt-2 text-sm font-semibold">
             <span>{t('total')}</span>
             <span className="tabular-nums">{formatCurrency(order.grand_total)}</span>
@@ -113,7 +118,7 @@ function MobileQRLayout({ initialContext }: LayoutProps) {
             <button
               className="mt-3 w-full rounded-md border py-2 text-sm font-medium disabled:opacity-50"
               disabled={billRequested}
-              onClick={handleRequestBill}
+              onClick={() => setBillOpen(true)}
             >
               {billRequested ? t('bill_requested') : t('request_bill')}
             </button>
@@ -141,6 +146,16 @@ function MobileQRLayout({ initialContext }: LayoutProps) {
           </button>
         ))}
       </section>
+
+      <BillDialog
+        open={billOpen}
+        submitting={submitting}
+        onClose={() => setBillOpen(false)}
+        onConfirm={(data) => {
+          setBillOpen(false)
+          handleRequestBill(data)
+        }}
+      />
 
       {cartCount > 0 && (
         <div className="fixed inset-x-0 bottom-0 border-t bg-background p-4">

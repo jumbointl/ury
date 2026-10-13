@@ -174,11 +174,13 @@ export function useOrderingSession(initialContext?: OrderingContext) {
     }
   }
 
-  async function handleRequestBill() {
+  async function handleRequestBill(data?: { documento?: string; nombre?: string }) {
     if (!context) return
+    setError(null)
     try {
-      await requestBill(context.session)
+      await requestBill(context.session, data?.documento, data?.nombre)
       setBillRequested(true)
+      await loadOrder(context.session)
     } catch (err) {
       setError(err instanceof Error ? err.message : t('bill_error'))
     }

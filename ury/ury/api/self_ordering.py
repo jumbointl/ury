@@ -490,7 +490,16 @@ def _sanitize_invoice_for_customer(invoice):
         ],
         "grand_total": invoice.grand_total,
         "billed": bool(invoice.invoice_printed),
+        "customer": _invoice_customer_label(invoice),
     }
+
+
+def _invoice_customer_label(invoice):
+    """Name shown to the guest when the invoice was nominated; None for the default (final consumer)."""
+    default = frappe.db.get_value("URY Self Ordering Profile", {"pos_profile": invoice.pos_profile}, "default_customer")
+    if not invoice.customer or invoice.customer == default:
+        return None
+    return invoice.customer_name or invoice.customer
 
 
 @frappe.whitelist(allow_guest=True)
@@ -726,8 +735,59 @@ def add_customer_items(session, items):
 # Request bill
 # ---------------------------------------------------------------------------
 
+def _customer_for_invoice(profile, documento, nombre):
+    """Customer for the SIFEN invoice from what the guest typed: a RUC (with check digit, e.g.
+    80012345-6) or a Paraguayan ID number. Existing customers are matched by document; a new one
+    is created with the default customer's group/territory. Validation (RUC check digit, unique
+    document) is sifen_py's, on the Customer doctype."""
+    import re
+
+    documento = (documento or "").strip()
+    nombre = (nombre or "").strip()
+    if not documento:
+        return None
+    es_ruc = "-" in documento
+    digitos = re.sub(r"\D", "", documento.split("-")[0])
+    if not digitos:
+        frappe.throw(_("Invalid document number"), frappe.ValidationError)
+    documento = f"{digitos}-{documento.split('-', 1)[1].strip()}" if es_ruc else digitos
+
+    name = None
+    if es_ruc:
+        name = frappe.db.get_value("Customer", {"tax_id": documento})
+    elif frappe.db.has_column("Customer", "sifen_numero_documento"):
+        name = frappe.db.get_value("Customer", {"sifen_numero_documento": digitos, "sifen_tipo_documento": ["like", "1 -%"]})
+    else:
+        name = frappe.db.get_value("Customer", {"tax_id": digitos})
+    if name:
+        return name
+    if not nombre:
+        frappe.throw(_("Please enter the name for the invoice"), frappe.ValidationError)
+
+    base = frappe.db.get_value("Customer", profile.default_customer, ["customer_group", "territory"], as_dict=True) if profile.default_customer else None
+    doc = frappe.get_doc({
+        "doctype": "Customer",
+        "customer_name": nombre,
+        "customer_type": "Company" if es_ruc else "Individual",
+        "customer_group": (base or {}).get("customer_group"),
+        "territory": (base or {}).get("territory"),
+    })
+    if es_ruc:
+        doc.tax_id = documento
+    elif frappe.db.has_column("Customer", "sifen_numero_documento"):
+        opciones = (frappe.get_meta("Customer").get_field("sifen_tipo_documento").options or "").split("\n")
+        doc.sifen_tipo_documento = next((o for o in opciones if o.startswith("1 -")), None)
+        doc.sifen_numero_documento = digitos
+        if frappe.db.exists("Country", "Paraguay"):
+            doc.sifen_pais = "Paraguay"
+    else:
+        doc.tax_id = digitos
+    doc.insert(ignore_permissions=True)
+    return doc.name
+
+
 @frappe.whitelist(allow_guest=True)
-def request_bill(session):
+def request_bill(session, documento=None, nombre=None):
     session = _resolve_session(session)
     profile = frappe.get_doc("URY Self Ordering Profile", session.ordering_profile)
 
@@ -736,13 +796,22 @@ def request_bill(session):
     if not session.table or not session.invoice:
         frappe.throw(_("No active order for this table"), frappe.ValidationError)
 
+    customer_name = None
     with _elevated():
+        customer = _customer_for_invoice(profile, documento, nombre)
+        if customer:
+            invoice = frappe.get_doc("POS Invoice", session.invoice)
+            if invoice.docstatus == 0 and invoice.customer != customer:
+                invoice.customer = customer
+                invoice.customer_name = frappe.db.get_value("Customer", customer, "customer_name")
+                invoice.save(ignore_permissions=True)
+            customer_name = frappe.db.get_value("Customer", customer, "customer_name")
         existing = frappe.db.exists(
             "URY Service Request",
             {"table": session.table, "invoice": session.invoice, "request_type": "Bill", "status": ["!=", "Resolved"]},
         )
         if existing:
-            return {"status": "Already Requested", "request": existing}
+            return {"status": "Already Requested", "request": existing, "customer": customer_name}
 
         req = frappe.get_doc({
             "doctype": "URY Service Request",
@@ -755,7 +824,7 @@ def request_bill(session):
         })
         req.insert(ignore_permissions=True)
 
-    return {"status": "Requested", "request": req.name}
+    return {"status": "Requested", "request": req.name, "customer": customer_name}
 
 
 # ---------------------------------------------------------------------------

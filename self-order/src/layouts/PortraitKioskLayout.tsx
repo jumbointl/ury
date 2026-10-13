@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { formatCurrency } from '@ury/core'
+import { groupOrderItems } from '../lib/api'
+import BillDialog from './shared/BillDialog'
 import { t, tItems } from '../lib/i18n'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@ury/ui'
 import { useIdleReset } from '../hooks/useIdleReset'
@@ -52,6 +54,7 @@ function PortraitKioskLayout({ initialContext }: LayoutProps) {
     cartCount,
     cartTotal,
   } = useOrderingSession(initialContext)
+  const [billOpen, setBillOpen] = useState(false)
 
   const [selectedCategory, setSelectedCategory] = useState<string>(ALL_CATEGORY)
   const [cartExpanded, setCartExpanded] = useState(false)
@@ -139,7 +142,7 @@ function PortraitKioskLayout({ initialContext }: LayoutProps) {
         <section className="mx-6 mt-4 rounded-lg border p-4">
           <h2 className="mb-2 text-sm font-medium text-muted-foreground">{t('your_order')}</h2>
           <ul className="space-y-1 text-base">
-            {order.items.map((row, idx) => (
+            {groupOrderItems(order.items).map((row, idx) => (
               <li key={`${row.item_code}-${idx}`} className="flex justify-between">
                 <span>{row.item_name} × {row.qty}</span>
                 <span>{row.amount}</span>
@@ -163,7 +166,7 @@ function PortraitKioskLayout({ initialContext }: LayoutProps) {
             <button
               className="mt-3 w-full rounded-md border py-3 text-sm font-medium disabled:opacity-50"
               disabled={billRequested}
-              onClick={handleRequestBill}
+              onClick={() => setBillOpen(true)}
             >
               {billRequested ? t('bill_requested') : t('request_bill')}
             </button>
@@ -267,6 +270,15 @@ function PortraitKioskLayout({ initialContext }: LayoutProps) {
         </div>
       )}
 
+      <BillDialog
+        open={billOpen}
+        submitting={submitting}
+        onClose={() => setBillOpen(false)}
+        onConfirm={(data) => {
+          setBillOpen(false)
+          handleRequestBill(data)
+        }}
+      />
       <Dialog open={showIdleWarning} onOpenChange={(open) => !open && handleStillHere()}>
         <DialogContent onClose={handleStillHere}>
           <DialogHeader>

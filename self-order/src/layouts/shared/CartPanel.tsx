@@ -1,5 +1,7 @@
 import { formatCurrency } from '@ury/core'
-import type { CustomerOrder, MenuItem, OrderingContext } from '../../lib/api'
+import { useState } from 'react'
+import { groupOrderItems, type CustomerOrder, type MenuItem, type OrderingContext } from '../../lib/api'
+import BillDialog, { type BillData } from './BillDialog'
 import { t, tItems } from '../../lib/i18n'
 
 type CartEntry = { item: MenuItem; qty: number }
@@ -16,7 +18,7 @@ interface CartPanelProps {
   onIncrement: (item: MenuItem) => void
   onDecrement: (itemCode: string) => void
   onSubmit: () => void
-  onRequestBill: () => void
+  onRequestBill: (data?: BillData) => void
   onPayOnline: () => void
   className?: string
 }
@@ -42,6 +44,7 @@ function CartPanel({
   onPayOnline,
   className,
 }: CartPanelProps) {
+  const [billOpen, setBillOpen] = useState(false)
   return (
     <aside className={className}>
       <div className="flex-1 overflow-y-auto">
@@ -49,7 +52,7 @@ function CartPanel({
           <section className="mb-4 rounded-lg border p-3">
             <h2 className="mb-2 text-sm font-medium text-muted-foreground">{t('your_order')}</h2>
             <ul className="space-y-1 text-sm">
-              {order.items.map((row, idx) => (
+              {groupOrderItems(order.items).map((row, idx) => (
                 <li key={`${row.item_code}-${idx}`} className="flex justify-between">
                   <span>
                     {row.item_name} × {row.qty}
@@ -58,6 +61,7 @@ function CartPanel({
                 </li>
               ))}
             </ul>
+            {order.customer && <p className="mt-1 text-xs text-muted-foreground">{t('invoice_to', { name: order.customer })}</p>}
             <div className="mt-2 flex justify-between border-t pt-2 text-sm font-semibold">
               <span>{t('total')}</span>
               <span className="tabular-nums">{formatCurrency(order.grand_total)}</span>
@@ -125,12 +129,21 @@ function CartPanel({
           <button
             className="mt-2 w-full rounded-md border py-2 text-sm font-medium disabled:opacity-50"
             disabled={billRequested}
-            onClick={onRequestBill}
+            onClick={() => setBillOpen(true)}
           >
             {billRequested ? t('bill_requested') : t('request_bill')}
           </button>
         )}
       </div>
+      <BillDialog
+        open={billOpen}
+        submitting={submitting}
+        onClose={() => setBillOpen(false)}
+        onConfirm={(data) => {
+          setBillOpen(false)
+          onRequestBill(data)
+        }}
+      />
     </aside>
   )
 }
