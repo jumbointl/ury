@@ -735,7 +735,7 @@ def add_customer_items(session, items):
 # Request bill
 # ---------------------------------------------------------------------------
 
-def _customer_for_invoice(profile, documento, nombre):
+def _customer_for_invoice(profile, documento, nombre, email=None, direccion=None, ciudad=None):
     """Customer for the SIFEN invoice from what the guest typed: a RUC (with check digit, e.g.
     80012345-6) or a Paraguayan ID number. Existing customers are matched by document; a new one
     is created with the default customer's group/territory. Validation (RUC check digit, unique
@@ -759,7 +759,29 @@ def _customer_for_invoice(profile, documento, nombre):
         name = frappe.db.get_value("Customer", {"sifen_numero_documento": digitos, "sifen_tipo_documento": ["like", "1 -%"]})
     else:
         name = frappe.db.get_value("Customer", {"tax_id": digitos})
+    email = (email or "").strip()
+    direccion = (direccion or "").strip()
+    ciudad = (ciudad or "").strip()
+    if email and not frappe.utils.validate_email_address(email):
+        frappe.throw(_("Invalid email address"), frappe.ValidationError)
+    if ciudad and not frappe.db.exists("SIFEN Ciudad", ciudad):
+        frappe.throw(_("Unknown city"), frappe.ValidationError)
     if name:
+        # Existing customer: only fill in what is still empty, never overwrite the staff's data.
+        existing = frappe.get_doc("Customer", name)
+        cambios = False
+        if email and not existing.email_id:
+            existing.email_id = email
+            cambios = True
+        if direccion and existing.meta.has_field("sifen_direccion") and not existing.get("sifen_direccion"):
+            existing.sifen_direccion = direccion
+            existing.sifen_numero_casa = existing.get("sifen_numero_casa") or "0"
+            cambios = True
+        if ciudad and existing.meta.has_field("sifen_ciudad") and not existing.get("sifen_ciudad"):
+            existing.sifen_ciudad = ciudad
+            cambios = True
+        if cambios:
+            existing.save(ignore_permissions=True)
         return name
     if not nombre:
         frappe.throw(_("Please enter the name for the invoice"), frappe.ValidationError)
@@ -782,12 +804,39 @@ def _customer_for_invoice(profile, documento, nombre):
             doc.sifen_pais = "Paraguay"
     else:
         doc.tax_id = digitos
+    if email:
+        doc.email_id = email  # ERPNext creates the primary Contact from it on insert
+    if direccion and doc.meta.has_field("sifen_direccion"):
+        doc.sifen_direccion = direccion
+        doc.sifen_numero_casa = "0"
+    if ciudad and doc.meta.has_field("sifen_ciudad"):
+        doc.sifen_ciudad = ciudad
     doc.insert(ignore_permissions=True)
     return doc.name
 
 
 @frappe.whitelist(allow_guest=True)
-def request_bill(session, documento=None, nombre=None):
+def search_cities(session, q=None):
+    """SIFEN city catalogue (Paraguay) for the invoice dialog; gated by a valid ordering session."""
+    _resolve_session(session)
+    if not frappe.db.exists("DocType", "SIFEN Ciudad"):
+        return []
+    q = (q or "").strip()
+    if len(q) < 2:
+        return []
+    with _elevated():
+        rows = frappe.get_all(
+            "SIFEN Ciudad",
+            filters={"ciudad_descripcion": ["like", f"%{q}%"]},
+            fields=["name", "ciudad_descripcion", "departamento_descripcion"],
+            order_by="ciudad_descripcion asc",
+            limit=12,
+        )
+    return rows
+
+
+@frappe.whitelist(allow_guest=True)
+def request_bill(session, documento=None, nombre=None, email=None, direccion=None, ciudad=None):
     session = _resolve_session(session)
     profile = frappe.get_doc("URY Self Ordering Profile", session.ordering_profile)
 
@@ -798,7 +847,7 @@ def request_bill(session, documento=None, nombre=None):
 
     customer_name = None
     with _elevated():
-        customer = _customer_for_invoice(profile, documento, nombre)
+        customer = _customer_for_invoice(profile, documento, nombre, email, direccion, ciudad)
         if customer:
             invoice = frappe.get_doc("POS Invoice", session.invoice)
             if invoice.docstatus == 0 and invoice.customer != customer:

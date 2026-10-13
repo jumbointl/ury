@@ -149,6 +149,7 @@ function MobileQRLayout({ initialContext }: LayoutProps) {
 
       <BillDialog
         open={billOpen}
+        session={context?.session}
         submitting={submitting}
         onClose={() => setBillOpen(false)}
         onConfirm={(data) => {

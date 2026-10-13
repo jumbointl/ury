@@ -8,6 +8,7 @@ import {
   getMenu,
   getStoredContext,
   requestBill,
+  type BillData,
   type CustomerOrder,
   type MenuItem,
   type OrderingContext,
@@ -174,11 +175,11 @@ export function useOrderingSession(initialContext?: OrderingContext) {
     }
   }
 
-  async function handleRequestBill(data?: { documento?: string; nombre?: string }) {
+  async function handleRequestBill(data?: BillData) {
     if (!context) return
     setError(null)
     try {
-      await requestBill(context.session, data?.documento, data?.nombre)
+      await requestBill(context.session, data)
       setBillRequested(true)
       await loadOrder(context.session)
     } catch (err) {

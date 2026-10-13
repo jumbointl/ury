@@ -4,6 +4,7 @@
 type Dict = Record<string, string>
 const T: Record<string, Dict> = {
   en: {
+    email_label: 'Email (to receive the invoice)', address_label: 'Address', city_label: 'City', optional: '(optional)',
     invoice_title: 'Invoice details', invoice_hint: 'Enter your tax ID or ID number and name to get the invoice in your name; otherwise it goes as final consumer.', doc_label: 'Tax ID (RUC) or ID number', name_label: 'Name or company name', bill_with_name: 'Request bill with invoice in my name', bill_no_name: 'Request bill without name', cancel: 'Cancel', invoice_to: 'Invoice to: {name}',
     loading_menu: 'Loading menu…', starting_up: 'Starting up…',
     device_error: 'This device could not be started. Please contact staff.', device_bootstrap_error: 'Unable to bootstrap this device.',
@@ -25,6 +26,7 @@ const T: Record<string, Dict> = {
     assign_error: 'Could not assign this table. Please check the PIN and try again.',
   },
   es: {
+    email_label: 'Correo (para recibir la factura)', address_label: 'Dirección', city_label: 'Ciudad', optional: '(optativo)',
     invoice_title: 'Datos para la factura', invoice_hint: 'Cargá tu RUC o cédula y tu nombre para que la factura salga a tu nombre; si no, va como consumidor final.', doc_label: 'RUC o cédula', name_label: 'Nombre o razón social', bill_with_name: 'Pedir la cuenta con factura a mi nombre', bill_no_name: 'Pedir la cuenta sin nombre', cancel: 'Cancelar', invoice_to: 'Factura a nombre de: {name}',
     loading_menu: 'Cargando el menú…', starting_up: 'Iniciando…',
     device_error: 'No se pudo iniciar este dispositivo. Avisá al personal.', device_bootstrap_error: 'No se pudo iniciar este dispositivo.',
@@ -46,6 +48,7 @@ const T: Record<string, Dict> = {
     assign_error: 'No se pudo asignar la mesa. Revisá el PIN y probá de nuevo.',
   },
   pt: {
+    email_label: 'E-mail (para receber a nota)', address_label: 'Endereço', city_label: 'Cidade', optional: '(opcional)',
     invoice_title: 'Dados para a nota fiscal', invoice_hint: 'Informe seu RUC ou documento e seu nome para a nota sair em seu nome; se não, vai como consumidor final.', doc_label: 'RUC ou documento', name_label: 'Nome ou razão social', bill_with_name: 'Pedir a conta com nota em meu nome', bill_no_name: 'Pedir a conta sem nome', cancel: 'Cancelar', invoice_to: 'Nota em nome de: {name}',
     loading_menu: 'Carregando o cardápio…', starting_up: 'Iniciando…',
     device_error: 'Não foi possível iniciar este dispositivo. Avise a equipe.', device_bootstrap_error: 'Não foi possível iniciar este dispositivo.',
@@ -67,6 +70,7 @@ const T: Record<string, Dict> = {
     assign_error: 'Não foi possível atribuir a mesa. Verifique o PIN e tente novamente.',
   },
   'zh-TW': {
+    email_label: '電子郵件（接收發票）', address_label: '地址', city_label: '城市', optional: '（選填）',
     invoice_title: '發票資料', invoice_hint: '輸入您的統編（RUC）或證件號碼與姓名，發票將開立在您的名下；否則以一般消費者開立。', doc_label: 'RUC 或證件號碼', name_label: '姓名或公司名稱', bill_with_name: '結帳並開立我的發票', bill_no_name: '結帳（不開立抬頭）', cancel: '取消', invoice_to: '發票抬頭：{name}',
     loading_menu: '載入菜單中…', starting_up: '啟動中…',
     device_error: '無法啟動此裝置，請聯絡服務人員。', device_bootstrap_error: '無法啟動此裝置。',
@@ -88,6 +92,7 @@ const T: Record<string, Dict> = {
     assign_error: '無法指派桌號，請確認 PIN 後再試。',
   },
   zh: {
+    email_label: '电子邮件（接收发票）', address_label: '地址', city_label: '城市', optional: '（选填）',
     invoice_title: '发票信息', invoice_hint: '输入您的税号（RUC）或证件号码和姓名，发票将开在您的名下；否则按普通消费者开具。', doc_label: 'RUC 或证件号码', name_label: '姓名或公司名称', bill_with_name: '结账并开具我的发票', bill_no_name: '结账（不开抬头）', cancel: '取消', invoice_to: '发票抬头：{name}',
     loading_menu: '加载菜单中…', starting_up: '启动中…',
     device_error: '无法启动此设备，请联系服务人员。', device_bootstrap_error: '无法启动此设备。',

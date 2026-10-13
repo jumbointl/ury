@@ -210,11 +210,33 @@ export interface BillRequestResult {
   customer?: string | null
 }
 
-export async function requestBill(session: string, documento?: string, nombre?: string): Promise<BillRequestResult> {
+export interface BillData {
+  documento?: string
+  nombre?: string
+  email?: string
+  direccion?: string
+  ciudad?: string
+}
+
+export interface CityOption {
+  name: string
+  ciudad_descripcion: string
+  departamento_descripcion: string
+}
+
+export async function searchCities(session: string, q: string): Promise<CityOption[]> {
+  const response = await call.get<FrappeResponse<CityOption[]>>(`${M}.search_cities`, { session, q })
+  return response.message
+}
+
+export async function requestBill(session: string, data?: BillData): Promise<BillRequestResult> {
   const response = await call.post<FrappeResponse<BillRequestResult>>(`${M}.request_bill`, {
     session,
-    documento: documento || '',
-    nombre: nombre || '',
+    documento: data?.documento || '',
+    nombre: data?.nombre || '',
+    email: data?.email || '',
+    direccion: data?.direccion || '',
+    ciudad: data?.ciudad || '',
   })
   return response.message
 }
