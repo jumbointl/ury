@@ -86,6 +86,9 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [monedas, setMonedas] = useState<MonedasResponse | null>(null);
+  // Cobro parcial: pagos ya cargados en la cuenta abierta (app multimoneda, `pagos_de`)
+  const [prepaid, setPrepaid] = useState<any[]>([]);
+  const [isPartial, setIsPartial] = useState(false);
 
   // Calculate effective percentage if only amount is provided (for invoice-level discounts)
   const effectivePercentage = discountPercentage 
@@ -101,7 +104,16 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
   useEffect(() => {
     fetchPaymentModes();
     loadMonedas().then(setMonedas);
-  }, [fetchPaymentModes]);
+    (async () => {
+      try {
+        const r: any = await call.get('multimoneda.api.pagos_de', { invoice });
+        const data = r?.message ?? r;
+        if (data && Array.isArray(data.pagos)) setPrepaid(data.pagos);
+      } catch (e) {
+        // sin la app multimoneda no hay cobro parcial
+      }
+    })();
+  }, [fetchPaymentModes, invoice]);
 
   const principal = monedas?.principal ?? null;
   const principalCode = principal?.codigo ?? '';
@@ -173,7 +185,9 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
       return { mode_of_payment: id, amount };
     })
     .filter(Boolean);
-  const paymentsTotal = roundTo(payments.reduce((sum, p: any) => sum + p.amount, 0), principalDecimals);
+  const prepaidTotal = roundTo(prepaid.reduce((sum, p: any) => sum + (p.amount || 0), 0), principalDecimals);
+  const newPaymentsTotal = roundTo(payments.reduce((sum, p: any) => sum + p.amount, 0), principalDecimals);
+  const paymentsTotal = roundTo(prepaidTotal + newPaymentsTotal, principalDecimals);
   const shortfall = roundTo(finalTotal - paymentsTotal, principalDecimals);
   const isShort = shortfall > 0.005;
   const changeDue = roundTo(paymentsTotal - finalTotal, principalDecimals);
@@ -190,7 +204,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
       //check if default payment mode is present in paymentModes
       setPaymentInputs((prev)=>({ 
         ...prev,
-        [DEFAULT_PAYMENT_MODE]: { currency: principalCode, amount: String(finalTotal) }
+        [DEFAULT_PAYMENT_MODE]: { currency: principalCode, amount: String(roundTo(Math.max(0, finalTotal - prepaidTotal), principalDecimals)) }
       }))
     }
   },[finalTotal,paymentModes,principalCode])
@@ -200,7 +214,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
     const totalEntered = Object.entries(paymentInputs)
       .filter(([id]) => id !== currentId)
       .reduce((sum, [_, val]) => sum + aPrincipal(parseFloat(val.amount) || 0, val.currency), 0);
-    return Math.max(0, roundTo(finalTotal - totalEntered, principalDecimals));
+    return Math.max(0, roundTo(finalTotal - prepaidTotal - totalEntered, principalDecimals));
   };
 
   // Handler for input focus to auto-fill remaining balance (converted to the row's currency)
@@ -236,7 +250,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
         customer,
         invoice,
         owner,
-        payments,
+        payments: [...prepaid, ...payments],
         pos_profile: posProfile,
         table,
       });
@@ -250,6 +264,23 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
       setError(parseFrappeError(err, t('errors.payment_failed')));
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handlePartialPayment = async () => {
+    setIsPartial(true);
+    setError(null);
+    try {
+      const r: any = await call.post('multimoneda.api.pago_parcial', { invoice, payments });
+      const data = r?.message ?? r;
+      showToast.success(t('payment.partial_success', { paid: formatCurrency(data?.pagado ?? paymentsTotal), remaining: formatCurrency(data?.falta ?? shortfall) }));
+      onClose();
+      await fetchOrders();
+    } catch (err) {
+      console.error('Partial payment failed:', err);
+      setError(parseFrappeError(err, t('errors.payment_failed')));
+    } finally {
+      setIsPartial(false);
     }
   };
 
@@ -315,6 +346,19 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
           {/* Payment Methods Section - Split Payment */}
           <div className="space-y-4 mb-6">
             <h3 className="text-lg font-semibold">{t('payment.payment_methods')}</h3>
+            {prepaid.length > 0 && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
+                <div className="font-medium text-green-800">{t('payment.paid_before', { amount: formatCurrency(prepaidTotal) })}</div>
+                <ul className="mt-1 text-green-700">
+                  {prepaid.map((p: any, i: number) => (
+                    <li key={i}>
+                      {p.mode_of_payment}: {p.moneda_cobro && p.moneda_cobro !== principalCode ? `${fmt(p.monto_moneda, p.moneda_cobro)} = ` : ''}{formatCurrency(p.amount)}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-1 font-medium text-green-800">{t('payment.remaining', { amount: formatCurrency(Math.max(0, finalTotal - prepaidTotal)) })}</div>
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-3">
               {paymentModes.map((mode: any) => {
                 const id = typeof mode === 'string' ? mode : mode.id;
@@ -443,12 +487,23 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
           {/* Payment Button */}
           <Button
             onClick={handlePayment}
-            disabled={isProcessing || payments.length === 0 || isShort}
-            variant={isProcessing || payments.length === 0 || isShort ? "secondary" : "default"}
+            disabled={isProcessing || isPartial || paymentsTotal <= 0 || isShort}
+            variant={isProcessing || isPartial || paymentsTotal <= 0 || isShort ? "secondary" : "default"}
             className="w-full"
           >
             {isProcessing ? t('payment.processing') : t('payment.pay_button', { amount: formatCurrency(paymentsTotal > 0 ? paymentsTotal : finalTotal) })}
           </Button>
+          {/* Partial payment: keeps the order open with what was paid so far (multimoneda app) */}
+          {multimoneda && isShort && payments.length > 0 && (
+            <Button
+              onClick={handlePartialPayment}
+              disabled={isProcessing || isPartial}
+              variant="outline"
+              className="w-full mt-2"
+            >
+              {isPartial ? t('payment.processing') : t('payment.partial_button', { amount: formatCurrency(newPaymentsTotal), remaining: formatCurrency(shortfall) })}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

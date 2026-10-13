@@ -85,7 +85,11 @@
     "success": "Payment successful: {{amount}} received",
     "currency": "Currency",
     "equivalents": "Total in other currencies",
-    "rate": "rate"
+    "rate": "rate",
+    "partial_button": "Partial payment {{amount}} (remaining {{remaining}})",
+    "partial_success": "Partial payment saved: {{paid}} paid, {{remaining}} remaining",
+    "paid_before": "Already paid: {{amount}}",
+    "remaining": "Remaining: {{amount}}"
   },
   "pos": {
     "not_opened_title": "POS Not Opened",

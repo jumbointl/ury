@@ -85,7 +85,11 @@
     "success": "Paiement réussi : {{amount}} reçu",
     "currency": "Devise",
     "equivalents": "Total dans les autres devises",
-    "rate": "taux"
+    "rate": "taux",
+    "partial_button": "Paiement partiel {{amount}} (reste {{remaining}})",
+    "partial_success": "Paiement partiel enregistré : {{paid}} payé, reste {{remaining}}",
+    "paid_before": "Déjà payé : {{amount}}",
+    "remaining": "Reste : {{amount}}"
   },
   "pos": {
     "not_opened_title": "PDV non ouvert",
