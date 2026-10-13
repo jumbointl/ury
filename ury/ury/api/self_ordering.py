@@ -915,8 +915,33 @@ def request_bill(session, documento=None, nombre=None, email=None, direccion=Non
             "requested_at": now_datetime(),
         })
         req.insert(ignore_permissions=True)
+        impreso = _print_pre_bill(session.invoice, profile.pos_profile)
 
-    return {"status": "Requested", "request": req.name, "customer": customer_name}
+    return {"status": "Requested", "request": req.name, "customer": customer_name, "printed": impreso}
+
+
+def _print_pre_bill(invoice_name, pos_profile):
+    """Print the bill on the room's / POS profile's bill printer, exactly like the POS "Bill"
+    button (same print format, marks invoice_printed). Without it the cashier never learned a
+    guest had asked for the bill: the POS has no screen for URY Service Request."""
+    from ury.ury.api.ury_print import network_printing
+
+    try:
+        print_format = frappe.db.get_value("POS Profile", pos_profile, "print_format")
+        table = frappe.db.get_value("POS Invoice", invoice_name, "restaurant_table")
+        printers = []
+        if table:
+            room = frappe.db.get_value("URY Table", table, "restaurant_room")
+            printers = frappe.get_all("URY Printer Settings", filters={"parent": room, "parenttype": "URY Room", "bill": 1}, pluck="printer", order_by="idx")
+        if not printers:
+            printers = frappe.get_all("URY Printer Settings", filters={"parent": pos_profile, "parenttype": "POS Profile", "bill": 1}, pluck="printer", order_by="idx")
+        resultado = None
+        for printer in printers:
+            resultado = network_printing("POS Invoice", invoice_name, printer, print_format)
+        return resultado == "Success"
+    except Exception as e:
+        frappe.log_error(f"Pre-bill print failed for {invoice_name}: {e}", "Self-order bill")
+        return False
 
 
 # ---------------------------------------------------------------------------
