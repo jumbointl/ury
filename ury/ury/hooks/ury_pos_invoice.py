@@ -33,7 +33,9 @@ def validate_invoice(doc, method):
         return
     remove_items = frappe.db.get_value("POS Profile", doc.pos_profile, "remove_items")
     
-    if doc.invoice_printed == 1 and remove_items == 0:
+    # An amended copy (cancel + amend) is a new document that inherits invoice_printed=1: there is nothing
+    # in the DB to compare against yet, so the removed-items check does not apply.
+    if doc.invoice_printed == 1 and remove_items == 0 and not doc.is_new() and frappe.db.exists("POS Invoice", doc.name):
         # Get the original items from db
         original_doc = frappe.get_doc("POS Invoice", doc.name)
         
