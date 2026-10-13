@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build --base=/assets/ury/mosaic/ && yarn copy-html-entry",
     "preview": "vite preview",
-    "copy-html-entry": "cp ../ury/public/mosaic/index.html ../ury/www/mosaic.html"
+    "copy-html-entry": "sh ./copy-html-entry.sh"
   },
   "dependencies": {
     "socket.io-client": "^4.5.1",
