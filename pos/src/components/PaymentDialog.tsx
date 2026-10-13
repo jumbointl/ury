@@ -22,6 +22,8 @@ interface MonedaCobro {
 interface MonedasResponse {
   principal: { codigo: string; simbolo: string; decimales: number; formato?: string };
   monedas: MonedaCobro[];
+  /** Moneda en la que se da el vuelto si el cajero no elige otra (configuración de multimoneda). */
+  vuelto?: string;
 }
 interface PaymentInput { currency: string; amount: string }
 
@@ -89,6 +91,8 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
   // Cobro parcial: pagos ya cargados en la cuenta abierta (app multimoneda, `pagos_de`)
   const [prepaid, setPrepaid] = useState<any[]>([]);
   const [isPartial, setIsPartial] = useState(false);
+  // Moneda en la que se devuelve el vuelto (el cierre de caja la descuenta de esa moneda)
+  const [changeCurrency, setChangeCurrency] = useState<string>('');
 
   // Calculate effective percentage if only amount is provided (for invoice-level discounts)
   const effectivePercentage = discountPercentage 
@@ -103,7 +107,10 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
 
   useEffect(() => {
     fetchPaymentModes();
-    loadMonedas().then(setMonedas);
+    loadMonedas().then((m) => {
+      setMonedas(m);
+      if (m) setChangeCurrency(m.vuelto || m.principal.codigo);
+    });
     (async () => {
       try {
         const r: any = await call.get('multimoneda.api.pagos_de', { invoice });
@@ -244,6 +251,14 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
     setIsProcessing(true);
     setError(null);
     try {
+      if (multimoneda && changeDue > 0.005) {
+        // make_invoice de URY no recibe campos extra: la moneda del vuelto se fija en la cuenta antes de cerrarla.
+        try {
+          await call.post('multimoneda.api.fijar_vuelto', { invoice, moneda: changeCurrency || principalCode });
+        } catch (e) {
+          console.warn('No se pudo fijar la moneda del vuelto:', e);
+        }
+      }
       await call.post('ury.ury.doctype.ury_order.ury_order.make_invoice', {
         additionalDiscount: appliedDiscount > 0 ? appliedDiscount : null,
         cashier,
@@ -424,14 +439,27 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
               </p>
             )}
             {changeDue > 0.005 && (
-              <p className="text-yellow-700 text-sm font-medium">
+              <div className="text-yellow-700 text-sm font-medium">
                 {t('payment.change_due', { amount: formatCurrency(changeDue) })}
                 {multimoneda && (
-                  <span className="block text-xs text-gray-500 font-normal">
-                    {extras.map((m) => `${fmt(dePrincipal(changeDue, m.codigo), m.codigo)}`).join(' · ')}
-                  </span>
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    <span className="text-xs text-gray-500 font-normal mr-1">{t('payment.change_in')}</span>
+                    {[{ codigo: principalCode }, ...extras].map((m) => {
+                      const selected = (changeCurrency || principalCode) === m.codigo;
+                      return (
+                        <button
+                          key={m.codigo}
+                          type="button"
+                          onClick={() => setChangeCurrency(m.codigo)}
+                          className={`px-2 py-1 rounded border text-xs font-semibold ${selected ? 'bg-yellow-500 border-yellow-600 text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-100'}`}
+                        >
+                          {m.codigo} {fmt(dePrincipal(changeDue, m.codigo), m.codigo)}
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-              </p>
+              </div>
             )}
           </div>
         </div>

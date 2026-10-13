@@ -296,3 +296,85 @@ export async function submitPosClosingEntry(
 ): Promise<{ name: string }> {
   return db.updateDoc('POS Closing Entry', name, { docstatus: 1 });
 }
+
+// ---- Cierre por moneda (app `multimoneda`, pedido de Pablo 13-10-2026) --------------------------------------
+// El cajero cuenta billetes por moneda física (USD, PYG, BRL...); el servidor dice cuánto espera de cada una
+// (vueltos descontados) y el cierre guarda el detalle en `cierre_por_moneda`.
+
+/** Una fila (medio de pago, moneda) del cierre por moneda, como la devuelve `multimoneda.cierre`. */
+export interface ClosingCurrencyRow {
+  mode_of_payment: string;
+  moneda: string;
+  simbolo: string;
+  decimales: number;
+  esperado: number;
+  esperado_principal: number;
+  cotizacion: number;
+  /** Lo que contó el cajero en esa moneda (se completa en el diálogo). */
+  contado: number;
+}
+
+/** Fila de factura del período, como la devuelve ERPNext `get_invoices` (va a `pos_invoices`). */
+export interface ClosingInvoiceRow {
+  name: string;
+  customer: string;
+  posting_date: string;
+  grand_total: number;
+  net_total: number;
+  total_qty: number;
+  total_taxes_and_charges: number;
+  change_amount: number;
+  account_for_change_amount: string;
+  is_return: number;
+  return_against: string | null;
+  doctype: string;
+}
+
+export interface MainClosingData {
+  invoices: ClosingInvoiceRow[];
+  payments: { mode_of_payment: string; account: string; amount: number }[];
+  taxes: { account_head: string; rate: number | null; amount: number }[];
+  totals: { grand_total: number; net_total: number; total_qty: number; total_taxes_and_charges: number };
+  por_moneda: ClosingCurrencyRow[];
+}
+
+export const currencyRowKey = (row: { mode_of_payment: string; moneda: string }) =>
+  `${row.mode_of_payment}|${row.moneda}`;
+
+/**
+ * Main-cashier path on ERPNext >= 16 (where `get_pos_invoices` no longer exists):
+ * wraps multimoneda.cierre.datos_cierre(start, end, pos_profile, user). Returns null when the
+ * multimoneda app is not installed so the caller can fall back to the legacy path.
+ */
+export async function getMainClosingData(
+  start: string,
+  end: string,
+  posProfile: string,
+  user: string
+): Promise<MainClosingData | null> {
+  try {
+    const response = await call.get<{ message: MainClosingData }>(
+      'multimoneda.cierre.datos_cierre',
+      { start, end, pos_profile: posProfile, user }
+    );
+    return response.message ?? null;
+  } catch (error) {
+    console.warn('multimoneda.cierre.datos_cierre not available, falling back:', error);
+    return null;
+  }
+}
+
+/** Expected amount per (mode of payment, currency) for the given invoices; [] without the multimoneda app. */
+export async function getClosingByCurrency(invoiceNames: string[]): Promise<ClosingCurrencyRow[]> {
+  if (invoiceNames.length === 0) return [];
+  try {
+    const response = await call.get<{ message: ClosingCurrencyRow[] }>(
+      'multimoneda.cierre.cierre_esperado',
+      { invoices: JSON.stringify(invoiceNames) }
+    );
+    return (response.message ?? []).map((row) => ({ ...row, contado: 0 }));
+  } catch (error) {
+    console.warn('multimoneda.cierre.cierre_esperado not available:', error);
+    return [];
+  }
+}

@@ -24,9 +24,14 @@ import {
   submitSubPosClosing,
   createPosClosingEntry,
   submitPosClosingEntry,
+  getMainClosingData,
+  getClosingByCurrency,
+  currencyRowKey,
   type OpenPosOpeningEntry,
   type POSClosingInvoice,
   type ClosingPaymentSummary,
+  type ClosingCurrencyRow,
+  type ClosingInvoiceRow,
 } from '../lib/pos-closing-api';
 
 interface POSClosingDialogProps {
@@ -176,6 +181,13 @@ const POSClosingDialog = ({ open, onOpenChange, onClosingSubmitted }: POSClosing
   const [invoiceCount, setInvoiceCount] = useState(0);
   const [totals, setTotals] = useState<AggregatedTotals>({ grandTotal: 0, netTotal: 0, totalQty: 0 });
   const [rows, setRows] = useState<ClosingPaymentSummary[]>([]);
+  // Cierre por moneda (app multimoneda): lo esperado/contado de cada moneda física por medio de pago.
+  const [currencyRows, setCurrencyRows] = useState<ClosingCurrencyRow[]>([]);
+  const [touchedCurrency, setTouchedCurrency] = useState<Set<string>>(new Set());
+  // Facturas e impuestos del período (ERPNext >= 16 no los completa solo: van en pos_invoices / taxes).
+  const [invoiceRows, setInvoiceRows] = useState<ClosingInvoiceRow[]>([]);
+  const [taxRows, setTaxRows] = useState<{ account_head: string; rate: number | null; amount: number }[]>([]);
+  const [totalTaxes, setTotalTaxes] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   // Set once the close submission (Sub POS Closing / POS Closing Entry) has
@@ -249,18 +261,46 @@ const POSClosingDialog = ({ open, onOpenChange, onClosingSubmitted }: POSClosing
       setPeriodEndDate(now);
       const end = formatDateTime(now);
 
-      const [invoices, openingDoc] = await Promise.all([
-        subCashier
-          ? getSubCashierPosInvoices(ownEntry.period_start_date, end, posProfile.name, user.name)
-          : getMainCashierPosInvoices(ownEntry.period_start_date, end, posProfile.name, user.name),
-        db.getDoc<OpeningEntryDoc>('POS Opening Entry', ownEntry.name),
-      ]);
+      const openingDoc = await db.getDoc<OpeningEntryDoc>('POS Opening Entry', ownEntry.name);
+      const openingBalances = openingDoc?.balance_details ?? [];
+      let mainData = null;
+      if (!subCashier) {
+        // ERPNext >= 16: `get_pos_invoices` ya no existe; multimoneda.cierre.datos_cierre trae facturas,
+        // esperado por medio de pago, impuestos y esperado por moneda en una sola llamada.
+        mainData = await getMainClosingData(ownEntry.period_start_date, end, posProfile.name, user.name);
+      }
 
-      setInvoiceCount(invoices.length);
-      const { totals: aggregatedTotals, expectedByMode } = aggregateInvoices(invoices);
-      setTotals(aggregatedTotals);
-      setRows(buildRows(openingDoc?.balance_details ?? [], expectedByMode));
+      if (mainData) {
+        setInvoiceCount(mainData.invoices.length);
+        setInvoiceRows(mainData.invoices);
+        setTaxRows(mainData.taxes);
+        setTotalTaxes(mainData.totals.total_taxes_and_charges);
+        setTotals({
+          grandTotal: mainData.totals.grand_total,
+          netTotal: mainData.totals.net_total,
+          totalQty: mainData.totals.total_qty,
+        });
+        const expectedByMode: Record<string, number> = {};
+        mainData.payments.forEach((p) => {
+          expectedByMode[p.mode_of_payment] = (expectedByMode[p.mode_of_payment] || 0) + (Number(p.amount) || 0);
+        });
+        setRows(buildRows(openingBalances, expectedByMode));
+        setCurrencyRows(mainData.por_moneda.map((row) => ({ ...row, contado: 0 })));
+      } else {
+        const invoices = subCashier
+          ? await getSubCashierPosInvoices(ownEntry.period_start_date, end, posProfile.name, user.name)
+          : await getMainCashierPosInvoices(ownEntry.period_start_date, end, posProfile.name, user.name);
+        setInvoiceCount(invoices.length);
+        setInvoiceRows([]);
+        setTaxRows([]);
+        setTotalTaxes(0);
+        const { totals: aggregatedTotals, expectedByMode } = aggregateInvoices(invoices);
+        setTotals(aggregatedTotals);
+        setRows(buildRows(openingBalances, expectedByMode));
+        setCurrencyRows(await getClosingByCurrency(invoices.map((inv) => inv.name)));
+      }
       setTouchedModes(new Set());
+      setTouchedCurrency(new Set());
     } catch (error) {
       console.error('Failed to load POS closing details:', error);
       setLoadError(extractServerErrorMessage(error, t('pos_closing.load_failed')));
@@ -281,6 +321,38 @@ const POSClosingDialog = ({ open, onOpenChange, onClosingSubmitted }: POSClosing
         row.mode_of_payment === modeOfPayment ? { ...row, closing_amount: closingAmount } : row
       )
     );
+    setTouchedModes((prev) => {
+      if (prev.has(modeOfPayment)) return prev;
+      const next = new Set(prev);
+      next.add(modeOfPayment);
+      return next;
+    });
+  };
+
+  // Cierre por moneda: el cajero cuenta cada moneda; el cierre del medio de pago (en moneda principal) se deriva.
+  const handleCurrencyChange = (modeOfPayment: string, moneda: string, contado: number) => {
+    const key = currencyRowKey({ mode_of_payment: modeOfPayment, moneda });
+    setCurrencyRows((prev) => {
+      const next = prev.map((row) => (currencyRowKey(row) === key ? { ...row, contado } : row));
+      const derived: Record<string, number> = {};
+      next.forEach((row) => {
+        derived[row.mode_of_payment] = (derived[row.mode_of_payment] || 0) + row.contado * (Number(row.cotizacion) || 0);
+      });
+      setRows((rowsPrev) =>
+        rowsPrev.map((row) =>
+          row.mode_of_payment in derived
+            ? { ...row, closing_amount: Math.round(derived[row.mode_of_payment] * 100) / 100 }
+            : row
+        )
+      );
+      return next;
+    });
+    setTouchedCurrency((prev) => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
     setTouchedModes((prev) => {
       if (prev.has(modeOfPayment)) return prev;
       const next = new Set(prev);
@@ -310,7 +382,9 @@ const POSClosingDialog = ({ open, onOpenChange, onClosingSubmitted }: POSClosing
       return { isValid: false, blockingMessage: null as string | null, warningMessage: null as string | null };
     }
 
-    const untouchedCount = rows.filter((row) => !touchedModes.has(row.mode_of_payment)).length;
+    const untouchedCount = currencyRows.length > 0
+      ? currencyRows.filter((row) => !touchedCurrency.has(currencyRowKey(row))).length
+      : rows.filter((row) => !touchedModes.has(row.mode_of_payment)).length;
     const totalClosing = rows.reduce((sum, row) => sum + row.closing_amount, 0);
 
     const zeroRowsWithActivity = rows.filter(
@@ -333,7 +407,7 @@ const POSClosingDialog = ({ open, onOpenChange, onClosingSubmitted }: POSClosing
         : null;
 
     return { isValid: !blockingMessage, blockingMessage, warningMessage };
-  }, [rows, touchedModes]);
+  }, [rows, touchedModes, currencyRows, touchedCurrency]);
 
   const handleRequestSubmit = () => {
     if (!validation.isValid) return;
@@ -362,6 +436,19 @@ const POSClosingDialog = ({ open, onOpenChange, onClosingSubmitted }: POSClosing
     // draft on retry.
     const kind: 'sub' | 'main' = pendingCloseDoc?.kind ?? (isSubCashier ? 'sub' : 'main');
 
+    // Detalle por moneda física (app multimoneda); el servidor recalcula el esperado y las diferencias.
+    const cierrePorMoneda = currencyRows.map((row) => ({
+      mode_of_payment: row.mode_of_payment,
+      moneda: row.moneda,
+      esperado: row.esperado,
+      contado: row.contado,
+      diferencia: row.contado - row.esperado,
+      cotizacion: row.cotizacion,
+      esperado_principal: row.esperado_principal,
+      contado_principal: Math.round(row.contado * (Number(row.cotizacion) || 0) * 100) / 100,
+    }));
+    const extra = cierrePorMoneda.length > 0 ? { cierre_por_moneda: cierrePorMoneda } : {};
+
     try {
       let docName = pendingCloseDoc?.name;
 
@@ -377,6 +464,7 @@ const POSClosingDialog = ({ open, onOpenChange, onClosingSubmitted }: POSClosing
             grand_total: totals.grandTotal,
             net_total: totals.netTotal,
             total_quantity: totals.totalQty,
+            ...extra,
           });
           docName = doc.name;
         } else {
@@ -393,6 +481,30 @@ const POSClosingDialog = ({ open, onOpenChange, onClosingSubmitted }: POSClosing
             grand_total: totals.grandTotal,
             net_total: totals.netTotal,
             total_quantity: totals.totalQty,
+            total_taxes_and_charges: totalTaxes,
+            // Sin estas filas ERPNext no consolida nada al confirmar (el escritorio las carga desde JS).
+            pos_invoices: invoiceRows
+              .filter((inv) => inv.doctype !== 'Sales Invoice')
+              .map((inv) => ({
+                pos_invoice: inv.name,
+                posting_date: inv.posting_date,
+                customer: inv.customer,
+                grand_total: inv.grand_total,
+                is_return: inv.is_return,
+                return_against: inv.return_against,
+              })),
+            sales_invoices: invoiceRows
+              .filter((inv) => inv.doctype === 'Sales Invoice')
+              .map((inv) => ({
+                sales_invoice: inv.name,
+                posting_date: inv.posting_date,
+                customer: inv.customer,
+                grand_total: inv.grand_total,
+                is_return: inv.is_return,
+                return_against: inv.return_against,
+              })),
+            taxes: taxRows.map((tx) => ({ account_head: tx.account_head, rate: tx.rate ?? 0, amount: tx.amount })),
+            ...extra,
           });
           docName = doc.name;
         }
@@ -533,6 +645,9 @@ const POSClosingDialog = ({ open, onOpenChange, onClosingSubmitted }: POSClosing
                   rows={rows}
                   touchedModes={touchedModes}
                   onChange={handleRowChange}
+                  currencyRows={currencyRows}
+                  touchedCurrency={touchedCurrency}
+                  onCurrencyChange={handleCurrencyChange}
                 />
               ) : (
                 <p className="py-8 text-center text-sm text-gray-500">

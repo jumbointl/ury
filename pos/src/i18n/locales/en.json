@@ -90,7 +90,8 @@
     "partial_button": "Partial payment {{amount}} (remaining {{remaining}})",
     "partial_success": "Partial payment saved: {{paid}} paid, {{remaining}} remaining",
     "paid_before": "Already paid: {{amount}}",
-    "remaining": "Remaining: {{amount}}"
+    "remaining": "Remaining: {{amount}}",
+    "change_in": "Change in:"
   },
   "pos": {
     "not_opened_title": "POS Not Opened",
@@ -181,7 +182,18 @@
     "confirm_submit": "Yes, Close POS",
     "confirm_back": "Go Back",
     "checklist_skip": "Skip for now",
-    "checklist_skip_hint": "The POS close was already submitted. You can finish this checklist later."
+    "checklist_skip_hint": "The POS close was already submitted. You can finish this checklist later.",
+    "by_currency": "Count by currency",
+    "by_mode": "By payment mode",
+    "help_by_currency": "Count the cash of each currency. The closing amount per payment mode is calculated from these counts.",
+    "col_mode": "Payment Mode",
+    "col_currency": "Currency",
+    "col_opening": "Opening",
+    "col_expected": "Expected",
+    "col_counted": "Counted",
+    "col_closing": "Closing",
+    "col_difference": "Difference",
+    "help_closing_derived": "Calculated from the amounts counted per currency, at the day's exchange rate."
   },
   "checklist": {
     "title_opening": "Opening Checklist",
