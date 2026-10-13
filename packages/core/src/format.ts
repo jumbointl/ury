@@ -1,9 +1,39 @@
 import { storage } from './storage';
 
+/**
+ * Locale derived from the site's Frappe number_format (stored by the POS as
+ * 'numberFormat' when it reads the Currency doc). Upstream hardcoded 'en-IN'.
+ */
+const NUMBER_FORMAT_LOCALES: Record<string, string> = {
+  '#,###.##': 'en-US',
+  '#.###,##': 'de-DE',
+  '# ###.##': 'en-ZA',
+  '# ###,##': 'fr-FR',
+  "#'###.##": 'de-CH',
+  '#, ###.##': 'en-US',
+  '#,##,###.##': 'en-IN',
+  '#,###.###': 'en-US',
+  '#.###': 'de-DE',
+  '#,###': 'en-US',
+};
+export function numberLocale(): string {
+  const fmt = storage.getItem('numberFormat') || '';
+  return NUMBER_FORMAT_LOCALES[fmt] || 'en-IN';
+}
+export function currencyDecimals(): number {
+  const d = storage.getItem('currencyPrecision');
+  if (d === null || d === '') return 2;
+  const n = parseInt(d, 10);
+  return isNaN(n) ? 2 : n;
+}
+
 export function formatCurrency(amount: number): string {
   const symbol = storage.getItem('currencySymbol') || '₹';
-  const roundedAmount = flt(amount, 2);
-  const formattedVal = typeof roundedAmount === 'number' && !isNaN(roundedAmount) ? roundedAmount.toLocaleString('en-IN') : roundedAmount;
+  const decimals = currencyDecimals();
+  const roundedAmount = flt(amount, decimals);
+  const formattedVal = typeof roundedAmount === 'number' && !isNaN(roundedAmount)
+    ? roundedAmount.toLocaleString(numberLocale(), { maximumFractionDigits: decimals })
+    : roundedAmount;
   return `${symbol} ${formattedVal}`;
 }
 

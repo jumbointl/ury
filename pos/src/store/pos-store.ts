@@ -364,7 +364,7 @@ export const usePOSStore = create<POSStore>((set, get) => ({
           profileLoading: false,
           currency: profile.currency || 'INR'
         });
-        if (!storage.getItem('currencySymbol')) {
+        if (!storage.getItem('currencySymbol') || !storage.getItem('numberFormat')) {
           await get().fetchCurrencySymbol();
         }
         return;
@@ -380,7 +380,7 @@ export const usePOSStore = create<POSStore>((set, get) => ({
         currency: combinedProfile.currency || 'INR'
       });
       
-      if (!storage.getItem('currencySymbol')) {
+      if (!storage.getItem('currencySymbol') || !storage.getItem('numberFormat')) {
         await get().fetchCurrencySymbol();
       }
     } catch (error) {
@@ -396,10 +396,14 @@ export const usePOSStore = create<POSStore>((set, get) => ({
     try {
       const currency = get().currency;
       const response = await getCurrencyInfo(currency);
-      const { symbol } = response;
+      const { symbol, number_format, smallest_currency_fraction_value } = response as any;
       
       set({ currencySymbol: symbol });
       storage.setItem('currencySymbol', symbol);
+      if (number_format) storage.setItem('numberFormat', number_format);
+      // decimals: 0 when the currency has no fraction (e.g. PYG), else 2
+      const noDecimals = number_format && !/\.\#|,\#/.test(number_format);
+      storage.setItem('currencyPrecision', noDecimals || Number(smallest_currency_fraction_value) >= 1 ? '0' : '2');
     } catch (error) {
       console.error('Error fetching currency symbol:', error);
       set({ currencySymbol: get().currency });

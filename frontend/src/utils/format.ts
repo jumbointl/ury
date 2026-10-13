@@ -1,8 +1,8 @@
-import { storage } from '@ury/core';
+import { storage, numberLocale, currencyDecimals } from '@ury/core';
 
 export function formatCurrency(amount: number): string {
   const symbol = (storage as any)?.getItem?.('currencySymbol') || '₹';
-  const formattedVal = typeof amount === 'number' && !isNaN(amount) ? amount.toLocaleString('en-IN') : amount;
+  const formattedVal = typeof amount === 'number' && !isNaN(amount) ? amount.toLocaleString(numberLocale(), { maximumFractionDigits: currencyDecimals() }) : amount;
   return `${symbol} ${formattedVal}`;
 }
 
