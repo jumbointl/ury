@@ -45,6 +45,17 @@ def network_printing(
 
         try:
             output = PdfWriter()
+            # Ticket printers: honour the Print Format margins (a thermal format sets them to 0; frappe
+            # otherwise falls back to 15mm on every side) and its page size when the format defines one.
+            pdf_options = {}
+            if print_format and frappe.db.exists("Print Format", print_format):
+                pf = frappe.get_cached_doc("Print Format", print_format)
+                for side in ("top", "bottom", "left", "right"):
+                    valor = pf.get(f"margin_{side}")
+                    if valor is not None:
+                        pdf_options[f"margin-{side}"] = f"{valor}mm"
+                if pf.get("page_size"):
+                    pdf_options["page-size"] = pf.page_size
             output = frappe.get_print(
                 doctype,
                 name,
@@ -53,6 +64,7 @@ def network_printing(
                 no_letterhead=no_letterhead,
                 as_pdf=True,
                 output=output,
+                pdf_options=pdf_options or None,
             )
             file_path = os.path.join(
                 "/", "tmp", f"frappe-pdf-{frappe.generate_hash()}.pdf"
