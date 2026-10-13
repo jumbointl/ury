@@ -2,7 +2,16 @@ import re
 import frappe
 
 
+def _numero(nombre):
+    """Los últimos 5 dígitos del número de la factura, ignorando el sufijo de enmienda (-1, -2…).
+    None cuando el nombre no termina en dígitos (series raras, devoluciones nombradas aparte)."""
+    m = re.search(r"(\d+)(?:-\d+)*$", nombre or "")
+    return int(m.group(1)[-5:]) if m else None
+
+
 def set_order_number(doc, event):
+    if doc.get("is_return"):
+        return  # una devolución no es un pedido nuevo: no lleva número de orden
     pos_profile = doc.pos_profile
     if doc.order_type == "Aggregators":
         last_invoice = frappe.get_value(
@@ -16,12 +25,9 @@ def set_order_number(doc, event):
             {"pos_profile": pos_profile, "status": "Open"},
             "custom_ury_last_invoice",
         )
-    if last_invoice:
-        last_invoice_number = int(last_invoice[-5:])
-
-        current_invoice = doc.name
-
-        current_invoice_number = int(re.sub(r"-\d+$", "", current_invoice)[-5:])  # amended names end in -1, -2…
+    last_invoice_number = _numero(last_invoice) if last_invoice else None
+    current_invoice_number = _numero(doc.name)
+    if last_invoice_number is not None and current_invoice_number is not None:
 
         order_number = current_invoice_number - last_invoice_number
         if order_number > 0:
