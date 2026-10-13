@@ -505,6 +505,17 @@ def get_customer_order(session):
     return _sanitize_invoice_for_customer(invoice)
 
 
+def _comments_by_item(rows):
+    """Customer notes per item_code ("sin hielo"), joined when the same item was added
+    more than once — they were dropped on the way to the KOT, so the kitchen never saw them."""
+    agg = {}
+    for row in rows:
+        comment = (row.get("comment") or "").strip()
+        if comment and comment not in agg.setdefault(row.item_code, []):
+            agg[row.item_code].append(comment)
+    return {code: "; ".join(notes) for code, notes in agg.items()}
+
+
 @frappe.whitelist(allow_guest=True)
 def add_customer_items(session, items):
     """Append-only customer order mutation. `items` is a list of
@@ -645,11 +656,12 @@ def add_customer_items(session, items):
         # a real second-order-on-a-multi-round-invoice test.
         past_qty_by_item = {}
         past_name_by_item = {}
+        past_comments = _comments_by_item(invoice.items)
         for row in invoice.items:
             past_qty_by_item[row.item_code] = past_qty_by_item.get(row.item_code, 0) + row.qty
             past_name_by_item[row.item_code] = row.item_name
         past_item = [
-            {"item_code": code, "item_name": past_name_by_item[code], "qty": past_qty_by_item[code], "comments": ""}
+            {"item_code": code, "item_name": past_name_by_item[code], "qty": past_qty_by_item[code], "comments": past_comments.get(code, "")}
             for code in past_qty_by_item
         ]
 
@@ -695,11 +707,12 @@ def add_customer_items(session, items):
             # item_code to build the correct current-state view.
             qty_by_item = {}
             name_by_item = {}
+            cur_comments = _comments_by_item(invoice.items)
             for row in invoice.items:
                 qty_by_item[row.item_code] = qty_by_item.get(row.item_code, 0) + row.qty
                 name_by_item[row.item_code] = row.item_name
             current_items_for_kot = [
-                {"item_code": code, "item_name": name_by_item[code], "qty": qty_by_item[code], "comments": ""}
+                {"item_code": code, "item_name": name_by_item[code], "qty": qty_by_item[code], "comments": cur_comments.get(code, "")}
                 for code in qty_by_item
             ]
             kot_execute(invoice.name, invoice.customer, invoice.restaurant_table, current_items_for_kot, past_item, None)
