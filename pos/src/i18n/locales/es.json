@@ -469,6 +469,11 @@
     "returned": "Devolución {{invoice}} por {{amount}} emitida ({{numero}})",
     "cancelled_to_loss": "Pedido anulado y enviado a pérdida",
     "pin_help": "La cocina ya preparó parte de este pedido. Hace falta el PIN de administrador para anularlo (va a pérdida).",
-    "pin_placeholder": "PIN de administrador"
+    "pin_placeholder": "PIN de administrador",
+    "sifen_title": "Factura electrónica (SIFEN)",
+    "status_label": "Estado",
+    "resend": "Reenviar a SIFEN",
+    "resent": "{{invoice}} vuelve a la cola de SIFEN",
+    "resend_help": "Esta factura no llegó a SIFEN. Después de corregir el dato (cliente, conexión) volvé a enviarla."
   }
 }

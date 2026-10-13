@@ -469,6 +469,11 @@
     "returned": "Devolução {{invoice}} de {{amount}} emitida ({{numero}})",
     "cancelled_to_loss": "Pedido cancelado e lançado como perda",
     "pin_help": "A cozinha já preparou parte deste pedido. É necessário o PIN do administrador para cancelar (vai para perda).",
-    "pin_placeholder": "PIN do administrador"
+    "pin_placeholder": "PIN do administrador",
+    "sifen_title": "Nota fiscal eletrônica (SIFEN)",
+    "status_label": "Situação",
+    "resend": "Reenviar ao SIFEN",
+    "resent": "{{invoice}} voltou para a fila do SIFEN",
+    "resend_help": "Esta nota não chegou ao SIFEN. Depois de corrigir o dado (cliente, conexão) envie novamente."
   }
 }

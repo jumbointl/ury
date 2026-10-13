@@ -469,6 +469,11 @@
     "returned": "Return {{invoice}} for {{amount}} issued ({{numero}})",
     "cancelled_to_loss": "Order cancelled and sent to loss",
     "pin_help": "The kitchen already prepared part of this order. An admin PIN is needed to cancel it (goes to loss).",
-    "pin_placeholder": "Admin PIN"
+    "pin_placeholder": "Admin PIN",
+    "sifen_title": "Electronic invoice (SIFEN)",
+    "status_label": "Status",
+    "resend": "Resend to SIFEN",
+    "resent": "{{invoice}} queued again for SIFEN",
+    "resend_help": "This invoice did not get through. After fixing the data (customer, connection) send it again."
   }
 }

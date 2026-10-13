@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Clock, User, UserCheck, Receipt, Printer, Pencil, X, GitBranch, GitMerge, UserCog, Undo2 } from 'lucide-react';
+import { Clock, User, UserCheck, Receipt, Printer, Pencil, X, GitBranch, GitMerge, UserCog, Undo2, CloudUpload } from 'lucide-react';
 import { Badge, Button, Card, CardContent } from '@ury/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@ury/ui';
 import { showToast } from '@ury/ui';
@@ -16,7 +16,7 @@ import BillMergeDialog from '../components/BillMergeDialog';
 import OrderActionsMenu from '../components/OrderActionsMenu';
 import SplitGroupPanel from '../components/SplitGroupPanel';
 import MergedBillPanel from '../components/MergedBillPanel';
-import { ClienteDialog, DevolucionDialog, isClosedOrder } from '../components/ClosedOrderActions';
+import { ClienteDialog, DevolucionDialog, SifenDialog, isClosedOrder } from '../components/ClosedOrderActions';
 import { printOrder } from '../lib/print';
 import { call } from '@ury/core';
 import { splitBill } from '../lib/order-api';
@@ -83,6 +83,7 @@ export default function Orders() {
   const [showMergeDialog, setShowMergeDialog] = React.useState(false);
   const [showClienteDialog, setShowClienteDialog] = React.useState(false);
   const [showDevolucionDialog, setShowDevolucionDialog] = React.useState(false);
+  const [showSifenDialog, setShowSifenDialog] = React.useState(false);
   // Anulación con PIN (caja_pos): la cocina ya preparó algo del pedido
   const [cancelPin, setCancelPin] = React.useState('');
   const [pinRequired, setPinRequired] = React.useState(false);
@@ -772,6 +773,9 @@ export default function Orders() {
                     <Button variant="outline" size="icon" className="flex-shrink-0" aria-label={t('closed.return_title')} title={t('closed.return_title')} onClick={() => setShowDevolucionDialog(true)}>
                       <Undo2 className="w-5 h-5" />
                     </Button>
+                    <Button variant="outline" size="icon" className="flex-shrink-0" aria-label={t('closed.sifen_title')} title={t('closed.sifen_title')} onClick={() => setShowSifenDialog(true)}>
+                      <CloudUpload className="w-5 h-5" />
+                    </Button>
                   </>
                 )}
                 {/* Payment Button - Only show for Draft, Unbilled, and Recently Paid orders */}
@@ -828,6 +832,9 @@ export default function Orders() {
       )}
       {selectedOrder && (
         <DevolucionDialog open={showDevolucionDialog} onOpenChange={setShowDevolucionDialog} invoice={selectedOrder.name} onDone={async () => { clearSelectedOrder(); await fetchOrders(); }} />
+      )}
+      {selectedOrder && (
+        <SifenDialog open={showSifenDialog} onOpenChange={setShowSifenDialog} invoice={selectedOrder.name} onDone={async () => { await fetchOrders(); }} />
       )}
       {selectedOrder && (
         <BillMergeDialog

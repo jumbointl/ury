@@ -469,6 +469,11 @@
     "returned": "退货 {{invoice}} 金额 {{amount}} 已开具（{{numero}}）",
     "cancelled_to_loss": "订单已取消并报损",
     "pin_help": "厨房已制作此订单的部分品项，取消需要管理员 PIN（将报损）。",
-    "pin_placeholder": "管理员 PIN"
+    "pin_placeholder": "管理员 PIN",
+    "sifen_title": "电子发票（SIFEN）",
+    "status_label": "状态",
+    "resend": "重新发送至 SIFEN",
+    "resent": "{{invoice}} 已重新排入 SIFEN 队列",
+    "resend_help": "此发票未成功送达 SIFEN。修正数据（客户、连接）后请重新发送。"
   }
 }

@@ -22,6 +22,7 @@ interface EstadoFactura {
   sifen_estado?: string;
   sifen_numero?: string;
   sifen_cdc?: string;
+  sifen_mensaje?: string;
   innominada: boolean;
   accion_cliente: 'enmendar' | 'nominar' | 'ninguna';
   por_que: string;
@@ -210,6 +211,71 @@ export function DevolucionDialog({ open, onOpenChange, invoice, onDone }: Devolu
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>{t('common.cancel')}</Button>
           <Button variant="danger" onClick={confirmar} disabled={busy || !seleccion.length}>{busy ? t('payment.processing') : t('closed.return_confirm')}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+/* ---------------------------------------------------------------- Estado SIFEN / Reenviar */
+interface SifenDialogProps {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  invoice: string;
+  onDone: () => Promise<void> | void;
+}
+
+const REENVIABLES = ['Error', 'Pendiente', 'Rechazado'];
+
+/**
+ * Estado de la factura electrónica de la orden cerrada y botón «Reenviar a SIFEN» (sifen_py.api.reenviar)
+ * para las que quedaron en Error / Rechazado / Pendiente (modo manual o sin internet).
+ */
+export function SifenDialog({ open, onOpenChange, invoice, onDone }: SifenDialogProps) {
+  const { estado, loading } = useEstadoFactura(invoice, open);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { if (open) setError(null); }, [open]);
+
+  const reenviable = !!estado && REENVIABLES.includes(estado.sifen_estado || '');
+
+  const reenviar = async () => {
+    setBusy(true); setError(null);
+    try {
+      await call.post('sifen_py.api.reenviar', { factura: invoice, doctype: 'POS Invoice' });
+      showToast.success(t('closed.resent', { invoice }));
+      onOpenChange(false);
+      await onDone();
+    } catch (e: any) {
+      setError(parseFrappeError(e, t('closed.unavailable')));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-white max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t('closed.sifen_title')}</DialogTitle>
+          <DialogDescription>
+            {loading ? t('common.loading') : estado ? (
+              <span className="block space-y-1">
+                <span className="block"><b>{invoice}</b>{estado.sifen_numero ? ` · ${estado.sifen_numero}` : ''}</span>
+                <span className="block">{t('closed.status_label')}: <b>{estado.sifen_estado || t('closed.not_sent')}</b></span>
+                {estado.sifen_mensaje && <span className="block text-xs text-gray-500">{estado.sifen_mensaje}</span>}
+                {reenviable && <span className="block text-xs text-amber-700">{t('closed.resend_help')}</span>}
+              </span>
+            ) : t('closed.unavailable')}
+          </DialogDescription>
+        </DialogHeader>
+        {error && <p className="px-6 text-sm text-red-600">{error}</p>}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>{t('common.cancel')}</Button>
+          {reenviable && (
+            <Button onClick={reenviar} disabled={busy}>{busy ? t('payment.processing') : t('closed.resend')}</Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
