@@ -67,9 +67,10 @@ function BillDialog({ open, session, submitting, onClose, onConfirm }: BillDialo
     setError(null)
   }
 
-  const askEmail = !lookup?.found || lookup.missing?.email
-  const askAddress = !lookup?.found || lookup.missing?.direccion
-  const askCity = !lookup?.found || lookup.missing?.ciudad
+  const sinNombre = Boolean(lookup?.sin_nombre)
+  const askEmail = !sinNombre && (!lookup?.found || lookup.missing?.email)
+  const askAddress = !sinNombre && (!lookup?.found || lookup.missing?.direccion)
+  const askCity = !sinNombre && (!lookup?.found || lookup.missing?.ciudad)
   const puedeConfirmar = lookup?.found || nombre.trim().length > 0
 
   return (
@@ -98,8 +99,8 @@ function BillDialog({ open, session, submitting, onClose, onConfirm }: BillDialo
           <>
             {lookup.found ? (
               <div className="mt-2 rounded-md bg-muted p-3 text-sm">
-                <div className="text-muted-foreground">{t('existing_customer')}</div>
-                <div className="text-base font-semibold">{lookup.customer_name}</div>
+                <div className="text-muted-foreground">{sinNombre ? t('no_name_customer') : t('existing_customer')}</div>
+                <div className="text-base font-semibold">{sinNombre ? t('no_name') : lookup.customer_name}</div>
                 <div className="text-muted-foreground">{lookup.documento}</div>
               </div>
             ) : (
@@ -171,7 +172,7 @@ function BillDialog({ open, session, submitting, onClose, onConfirm }: BillDialo
                 })
               }
             >
-              {lookup.found ? t('bill_as', { name: lookup.customer_name ?? '' }) : t('bill_with_name')}
+              {sinNombre ? t('bill_no_name') : lookup.found ? t('bill_as', { name: lookup.customer_name ?? '' }) : t('bill_with_name')}
             </button>
             <button className={secondaryBtn} disabled={submitting} onClick={volver}>
               {t('change_doc')}

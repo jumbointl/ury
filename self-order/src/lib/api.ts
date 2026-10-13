@@ -229,6 +229,7 @@ export interface CustomerLookup {
   documento: string
   is_ruc: boolean
   customer_name?: string
+  sin_nombre?: boolean
   missing?: { email: boolean; direccion: boolean; ciudad: boolean }
 }
 

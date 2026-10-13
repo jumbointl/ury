@@ -748,6 +748,9 @@ def _find_customer_by_document(documento):
     if not digitos:
         frappe.throw(_("Invalid document number"), frappe.ValidationError)
     documento = f"{digitos}-{documento.split('-', 1)[1].strip()}" if es_ruc else digitos
+    if digitos.strip("0") == "":
+        # Floreant convention: document 0 = "Sin Nombre" (final consumer, SIFEN innominado).
+        return None, "0", False
     if es_ruc:
         name = frappe.db.get_value("Customer", {"tax_id": documento})
     elif frappe.db.has_column("Customer", "sifen_numero_documento"):
@@ -764,6 +767,8 @@ def lookup_customer(session, documento):
     _resolve_session(session)
     with _elevated():
         name, documento, es_ruc = _find_customer_by_document(documento)
+        if documento == "0":
+            return {"found": True, "documento": "0", "is_ruc": False, "sin_nombre": True, "customer_name": _("Sin Nombre")}
         if not name:
             return {"found": False, "documento": documento, "is_ruc": es_ruc}
         c = frappe.get_doc("Customer", name)
@@ -787,8 +792,9 @@ def _customer_for_invoice(profile, documento, nombre, email=None, direccion=None
     document) is sifen_py's, on the Customer doctype."""
     nombre = (nombre or "").strip()
     name, documento, es_ruc = _find_customer_by_document(documento)
-    if not documento:
-        return None
+    if not documento or documento == "0":
+        # "Sin nombre" (or document 0): back to the profile's default customer, SIFEN innominado.
+        return profile.default_customer or None
     digitos = documento.split("-")[0]
     email = (email or "").strip()
     direccion = (direccion or "").strip()
