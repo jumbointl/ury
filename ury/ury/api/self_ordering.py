@@ -735,30 +735,61 @@ def add_customer_items(session, items):
 # Request bill
 # ---------------------------------------------------------------------------
 
-def _customer_for_invoice(profile, documento, nombre, email=None, direccion=None, ciudad=None):
-    """Customer for the SIFEN invoice from what the guest typed: a RUC (with check digit, e.g.
-    80012345-6) or a Paraguayan ID number. Existing customers are matched by document; a new one
-    is created with the default customer's group/territory. Validation (RUC check digit, unique
-    document) is sifen_py's, on the Customer doctype."""
+def _find_customer_by_document(documento):
+    """(customer name or None, normalised document, is_ruc). A RUC carries its check digit
+    (80012345-6) and lives in tax_id; a Paraguayan ID number lives in sifen_numero_documento."""
     import re
 
     documento = (documento or "").strip()
-    nombre = (nombre or "").strip()
     if not documento:
-        return None
+        return None, "", False
     es_ruc = "-" in documento
     digitos = re.sub(r"\D", "", documento.split("-")[0])
     if not digitos:
         frappe.throw(_("Invalid document number"), frappe.ValidationError)
     documento = f"{digitos}-{documento.split('-', 1)[1].strip()}" if es_ruc else digitos
-
-    name = None
     if es_ruc:
         name = frappe.db.get_value("Customer", {"tax_id": documento})
     elif frappe.db.has_column("Customer", "sifen_numero_documento"):
         name = frappe.db.get_value("Customer", {"sifen_numero_documento": digitos, "sifen_tipo_documento": ["like", "1 -%"]})
     else:
         name = frappe.db.get_value("Customer", {"tax_id": digitos})
+    return name, documento, es_ruc
+
+
+@frappe.whitelist(allow_guest=True)
+def lookup_customer(session, documento):
+    """Step 1 of the invoice dialog: does this RUC / ID number already exist? Only the name and
+    which contact fields are still empty are revealed, never the stored data itself."""
+    _resolve_session(session)
+    with _elevated():
+        name, documento, es_ruc = _find_customer_by_document(documento)
+        if not name:
+            return {"found": False, "documento": documento, "is_ruc": es_ruc}
+        c = frappe.get_doc("Customer", name)
+        return {
+            "found": True,
+            "documento": documento,
+            "is_ruc": es_ruc,
+            "customer_name": c.customer_name,
+            "missing": {
+                "email": not c.email_id,
+                "direccion": c.meta.has_field("sifen_direccion") and not c.get("sifen_direccion"),
+                "ciudad": c.meta.has_field("sifen_ciudad") and not c.get("sifen_ciudad"),
+            },
+        }
+
+
+def _customer_for_invoice(profile, documento, nombre, email=None, direccion=None, ciudad=None):
+    """Customer for the SIFEN invoice from what the guest typed: a RUC (with check digit, e.g.
+    80012345-6) or a Paraguayan ID number. Existing customers are matched by document; a new one
+    is created with the default customer's group/territory. Validation (RUC check digit, unique
+    document) is sifen_py's, on the Customer doctype."""
+    nombre = (nombre or "").strip()
+    name, documento, es_ruc = _find_customer_by_document(documento)
+    if not documento:
+        return None
+    digitos = documento.split("-")[0]
     email = (email or "").strip()
     direccion = (direccion or "").strip()
     ciudad = (ciudad or "").strip()

@@ -224,6 +224,19 @@ export interface CityOption {
   departamento_descripcion: string
 }
 
+export interface CustomerLookup {
+  found: boolean
+  documento: string
+  is_ruc: boolean
+  customer_name?: string
+  missing?: { email: boolean; direccion: boolean; ciudad: boolean }
+}
+
+export async function lookupCustomer(session: string, documento: string): Promise<CustomerLookup> {
+  const response = await call.get<FrappeResponse<CustomerLookup>>(`${M}.lookup_customer`, { session, documento })
+  return response.message
+}
+
 export async function searchCities(session: string, q: string): Promise<CityOption[]> {
   const response = await call.get<FrappeResponse<CityOption[]>>(`${M}.search_cities`, { session, q })
   return response.message

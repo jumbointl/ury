@@ -4,8 +4,9 @@
 type Dict = Record<string, string>
 const T: Record<string, Dict> = {
   en: {
+    search: 'Search', searching: 'Searching…', lookup_error: 'Could not look up that document.', existing_customer: 'Customer found', new_customer: 'New customer: please fill in your details', bill_as: 'Request bill with invoice to {name}', change_doc: 'Change document',
     email_label: 'Email (to receive the invoice)', address_label: 'Address', city_label: 'City', optional: '(optional)',
-    invoice_title: 'Invoice details', invoice_hint: 'Enter your tax ID or ID number and name to get the invoice in your name; otherwise it goes as final consumer.', doc_label: 'Tax ID (RUC) or ID number', name_label: 'Name or company name', bill_with_name: 'Request bill with invoice in my name', bill_no_name: 'Request bill without name', cancel: 'Cancel', invoice_to: 'Invoice to: {name}',
+    invoice_title: 'Invoice details', invoice_hint: 'Enter your tax ID (RUC) or ID number to get the invoice in your name; otherwise it goes as final consumer.', doc_label: 'Tax ID (RUC) or ID number', name_label: 'Name or company name', bill_with_name: 'Request bill with invoice in my name', bill_no_name: 'Request bill without name', cancel: 'Cancel', invoice_to: 'Invoice to: {name}',
     loading_menu: 'Loading menu…', starting_up: 'Starting up…',
     device_error: 'This device could not be started. Please contact staff.', device_bootstrap_error: 'Unable to bootstrap this device.',
     missing_code: 'This link is missing an ordering code. Please rescan the QR code on your table.',
@@ -26,8 +27,9 @@ const T: Record<string, Dict> = {
     assign_error: 'Could not assign this table. Please check the PIN and try again.',
   },
   es: {
+    search: 'Buscar', searching: 'Buscando…', lookup_error: 'No se pudo buscar ese documento.', existing_customer: 'Cliente encontrado', new_customer: 'Cliente nuevo: completá tus datos', bill_as: 'Pedir la cuenta con factura a nombre de {name}', change_doc: 'Cambiar documento',
     email_label: 'Correo (para recibir la factura)', address_label: 'Dirección', city_label: 'Ciudad', optional: '(optativo)',
-    invoice_title: 'Datos para la factura', invoice_hint: 'Cargá tu RUC o cédula y tu nombre para que la factura salga a tu nombre; si no, va como consumidor final.', doc_label: 'RUC o cédula', name_label: 'Nombre o razón social', bill_with_name: 'Pedir la cuenta con factura a mi nombre', bill_no_name: 'Pedir la cuenta sin nombre', cancel: 'Cancelar', invoice_to: 'Factura a nombre de: {name}',
+    invoice_title: 'Datos para la factura', invoice_hint: 'Cargá tu RUC o cédula para que la factura salga a tu nombre; si no, va como consumidor final.', doc_label: 'RUC o cédula', name_label: 'Nombre o razón social', bill_with_name: 'Pedir la cuenta con factura a mi nombre', bill_no_name: 'Pedir la cuenta sin nombre', cancel: 'Cancelar', invoice_to: 'Factura a nombre de: {name}',
     loading_menu: 'Cargando el menú…', starting_up: 'Iniciando…',
     device_error: 'No se pudo iniciar este dispositivo. Avisá al personal.', device_bootstrap_error: 'No se pudo iniciar este dispositivo.',
     missing_code: 'A este enlace le falta el código de pedido. Volvé a escanear el QR de tu mesa.',
@@ -48,6 +50,7 @@ const T: Record<string, Dict> = {
     assign_error: 'No se pudo asignar la mesa. Revisá el PIN y probá de nuevo.',
   },
   pt: {
+    search: 'Buscar', searching: 'Buscando…', lookup_error: 'Não foi possível buscar esse documento.', existing_customer: 'Cliente encontrado', new_customer: 'Cliente novo: preencha seus dados', bill_as: 'Pedir a conta com nota em nome de {name}', change_doc: 'Trocar documento',
     email_label: 'E-mail (para receber a nota)', address_label: 'Endereço', city_label: 'Cidade', optional: '(opcional)',
     invoice_title: 'Dados para a nota fiscal', invoice_hint: 'Informe seu RUC ou documento e seu nome para a nota sair em seu nome; se não, vai como consumidor final.', doc_label: 'RUC ou documento', name_label: 'Nome ou razão social', bill_with_name: 'Pedir a conta com nota em meu nome', bill_no_name: 'Pedir a conta sem nome', cancel: 'Cancelar', invoice_to: 'Nota em nome de: {name}',
     loading_menu: 'Carregando o cardápio…', starting_up: 'Iniciando…',
@@ -70,6 +73,7 @@ const T: Record<string, Dict> = {
     assign_error: 'Não foi possível atribuir a mesa. Verifique o PIN e tente novamente.',
   },
   'zh-TW': {
+    search: '查詢', searching: '查詢中…', lookup_error: '無法查詢該證件。', existing_customer: '已找到客戶', new_customer: '新客戶：請填寫您的資料', bill_as: '結帳並開立發票給 {name}', change_doc: '更改證件',
     email_label: '電子郵件（接收發票）', address_label: '地址', city_label: '城市', optional: '（選填）',
     invoice_title: '發票資料', invoice_hint: '輸入您的統編（RUC）或證件號碼與姓名，發票將開立在您的名下；否則以一般消費者開立。', doc_label: 'RUC 或證件號碼', name_label: '姓名或公司名稱', bill_with_name: '結帳並開立我的發票', bill_no_name: '結帳（不開立抬頭）', cancel: '取消', invoice_to: '發票抬頭：{name}',
     loading_menu: '載入菜單中…', starting_up: '啟動中…',
@@ -92,6 +96,7 @@ const T: Record<string, Dict> = {
     assign_error: '無法指派桌號，請確認 PIN 後再試。',
   },
   zh: {
+    search: '查询', searching: '查询中…', lookup_error: '无法查询该证件。', existing_customer: '已找到客户', new_customer: '新客户：请填写您的信息', bill_as: '结账并开具发票给 {name}', change_doc: '更改证件',
     email_label: '电子邮件（接收发票）', address_label: '地址', city_label: '城市', optional: '（选填）',
     invoice_title: '发票信息', invoice_hint: '输入您的税号（RUC）或证件号码和姓名，发票将开在您的名下；否则按普通消费者开具。', doc_label: 'RUC 或证件号码', name_label: '姓名或公司名称', bill_with_name: '结账并开具我的发票', bill_no_name: '结账（不开抬头）', cancel: '取消', invoice_to: '发票抬头：{name}',
     loading_menu: '加载菜单中…', starting_up: '启动中…',
