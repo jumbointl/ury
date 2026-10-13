@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Clock, User, UserCheck, Receipt, Printer, Pencil, X, GitBranch, GitMerge, UserCog, Undo2, CloudUpload } from 'lucide-react';
+import { Clock, User, UserCheck, Receipt, Printer, Pencil, X, GitBranch, GitMerge, UserCog, Undo2, CloudUpload, PackageCheck } from 'lucide-react';
 import { Badge, Button, Card, CardContent } from '@ury/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@ury/ui';
 import { showToast } from '@ury/ui';
@@ -271,6 +271,18 @@ export default function Orders() {
     }
   }
 
+
+  async function handleMarcarEntregado() {
+    if (!selectedOrder) return;
+    try {
+      await call.post('caja_pos.comandas.marcar_entregado', { invoice: selectedOrder.name });
+      showToast.success(t('closed.delivered_done', { invoice: selectedOrder.name }));
+      selectOrder({ ...selectedOrder, entregado: 1 });
+      await fetchOrders();
+    } catch (e) {
+      showToast.error(parseFrappeError(e, t('closed.mark_delivered')));
+    }
+  }
 
   async function handlePrintOrder() {
     if (!selectedOrder || !posStore.posProfile) return;
@@ -777,6 +789,12 @@ export default function Orders() {
                       <CloudUpload className="w-5 h-5" />
                     </Button>
                   </>
+                )}
+                {/* caja_pos: para llevar / delivery → marcar entregado (da de baja las comandas en cocina y barra) */}
+                {(selectedOrder.order_type === 'Take Away' || selectedOrder.order_type === 'Delivery') && String(selectedOrder.docstatus ?? 1) !== '2' && (
+                  <Button variant={selectedOrder.entregado ? 'secondary' : 'outline'} size="icon" className="flex-shrink-0" aria-label={t('closed.mark_delivered')} title={selectedOrder.entregado ? t('closed.delivered') : t('closed.mark_delivered')} disabled={!!selectedOrder.entregado} onClick={handleMarcarEntregado}>
+                    <PackageCheck className="w-5 h-5" />
+                  </Button>
                 )}
                 {/* Payment Button - Only show for Draft, Unbilled, and Recently Paid orders */}
                 {isOrderEditable(selectedOrder.status) && (

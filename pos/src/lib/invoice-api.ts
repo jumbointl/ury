@@ -6,6 +6,7 @@ import type { Filter } from 'frappe-js-sdk/lib/db/types';
 export interface POSInvoice {
   name: string;
   invoice_printed: number;
+  entregado?: number;
   grand_total: number;
   restaurant_table: string | null;
   cashier: string;
@@ -164,6 +165,7 @@ export async function getSplitGroup(invoiceId: string): Promise<SplitGroupRespon
 export function getOrdersTabForInvoice(
   inv: {
     invoice_printed: number;
+    entregado?: number;
     restaurant_table: string | null;
     status: string;
     docstatus?: number;
@@ -266,6 +268,7 @@ export interface MergeBillCandidate {
   custom_merged_tables?: string | null;
   status: string;
   invoice_printed: number;
+  entregado?: number;
   mobile_number?: string;
 }
 
@@ -323,6 +326,7 @@ const MERGE_CANDIDATE_FIELDS = [
   'custom_merged_tables',
   'status',
   'invoice_printed',
+  'entregado',
   'mobile_number',
 ] as const;
 

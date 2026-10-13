@@ -351,6 +351,7 @@ export default {
               this.daily_order_number = result.message.daily_order_number;
               this.kot_channel = `kot_update_${this.branch}_${this.production}`;
               this.kot_error_channel = `kot_error_${this.branch}_${this.production}`;
+              this.kot_served_channel = `kot_served_${this.branch}_${this.production}`;
               this.kot = result.message.KOT;
               this.loadingKots = false;
               this.updateQtyColorTable();
@@ -643,6 +644,13 @@ export default {
               }
             },1500)
             localStorage.setItem("kot_time", doc.kot.time);
+          });
+
+          // caja_pos: comandas dadas de baja al cobrar la mesa / marcar entregado → se refresca la pantalla
+          socket.on(this.kot_served_channel, () => {
+            this.fetchKOT().then(() => {
+              this.masonryLoading();
+            });
           });
 
           // New socket listener for KOT error alerts (delayed orders)
