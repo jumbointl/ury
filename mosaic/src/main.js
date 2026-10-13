@@ -4,7 +4,11 @@ import App from "./App.vue";
 
 import router from './router';
 
+import { t, kotType } from './i18n';
+
 const app = createApp(App);
+app.config.globalProperties.$t = t;
+app.config.globalProperties.$kotType = kotType;
 
 // Plugins
 app.use(router);

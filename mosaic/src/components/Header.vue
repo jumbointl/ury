@@ -46,7 +46,7 @@
                 <line x1="8" x2="16" y1="21" y2="21"/>
                 <line x1="12" x2="12" y1="17" y2="21"/>
               </svg>
-              Switch to Dashboard
+              {{ $t('switch_to_dashboard') }}
             </button>
             
             <button
@@ -58,8 +58,17 @@
                 <polyline points="16 17 21 12 16 7"/>
                 <line x1="21" x2="9" y1="12" y2="12"/>
               </svg>
-              Logout
+              {{ $t('logout') }}
             </button>
+            <div class="px-4 py-2 border-t border-gray-200 mt-1">
+              <p class="text-xs text-gray-500 mb-1">{{ $t('language') }}</p>
+              <div class="flex flex-wrap gap-1">
+                <button v-for="[code, label] in languages" :key="code" type="button" @click="setLanguage(code)"
+                  :class="['px-2 py-1 rounded text-xs border', code === language ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100']">
+                  {{ label }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -69,18 +78,22 @@
 
 <script>
 import urimosaicImage from "@/assets/logos/mosaic.jpg";
+import { LANGUAGES, currentLanguage, setLanguage } from "../i18n";
 
 export default {
   name: "Header",
   data() {
     return {
       imagePath: urimosaicImage,
+      languages: LANGUAGES,
+      language: currentLanguage(),
       showUserMenu: false,
       userName: "User",
       userId: "user@example.com"
     };
   },
   methods: {
+    setLanguage(code) { setLanguage(code); },
     reloadKOT() {
       window.location.reload();
     },
