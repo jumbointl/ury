@@ -160,6 +160,10 @@ def kot_list():
                     continue
 
         kotjson = json.loads(frappe.as_json(kotdoc))
+        # Who placed the order, for the card header: the waiter's name, or "self-order" for QR/kiosk
+        # orders (those run as Administrator, which meant nothing to the kitchen).
+        kotjson["order_source"] = "qr" if (frappe.db.get_value("POS Invoice", kotdoc.invoice, "custom_order_source") or "") in ("QR Table", "QR Pickup") else "staff"
+        kotjson["user_label"] = (frappe.db.get_value("User", kotdoc.user, "full_name") or kotdoc.user) if kotdoc.user not in (None, "", "Administrator", "Guest") else None
         KOT.append(kotjson)
     dashboard = build_dashboard_summary(KOT)
     return {

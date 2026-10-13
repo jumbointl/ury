@@ -83,12 +83,12 @@
                   <span
                     v-if="kot.tableortakeaway !== 'Takeaway'"
                     class="text-sm font-medium text-[#6B7280]"
-                    >Table
+                    >{{ $t('table') }}
                   </span>
                   <span class="text-black-500 font-semibold">
                     {{ kot.tableortakeaway === 'Takeaway' ? $t('takeaway') : kot.tableortakeaway }}
                     <span class="text-sm font-medium text-[#6B7280]"
-                      >( {{ kot.user }} )</span
+                      >( {{ kot.order_source === 'qr' || !kot.user_label ? $t('self_order') : kot.user_label }} )</span
                     ></span
                   ><br />
                   <span v-if="kot.is_aggregator" class="text-sm font-medium text-[#6B7280]">{{ $t('aggregator') }}</span>
@@ -548,7 +548,7 @@ export default {
       const hoursRemaining = Math.floor(timeDifference / 3600000);
       const minutesRemaining = Math.floor((timeDifference % 3600000) / 60000);
 
-      return `${hoursRemaining} : ${minutesRemaining}`;
+      return `${hoursRemaining}:${String(minutesRemaining).padStart(2, '0')}`;
     },
     fetchkotwithmasonry() {
       return this.fetchKOT().then(() => {

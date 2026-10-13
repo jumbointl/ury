@@ -2,6 +2,7 @@
 // El idioma se comparte con el POS de URY: localStorage 'ury_language' (es, pt, zh-TW, zh, en).
 const T = {
   en: {
+    self_order: 'Self-order',
     not_permitted: 'Not Permitted', login_to_access: 'Log in to access this page.', login: 'Login',
     no_active_orders: 'No active orders for {production}', confirm: 'Confirm', serve: 'Serve',
     aggregator: 'Aggregator', aggregator_id: 'Aggregator ID', order: 'Order', old_qty: 'Old Qty', takeaway: 'Takeaway',
@@ -13,6 +14,7 @@ const T = {
     username: 'Username:', password: 'Password:', sign_in: 'Sign in',
   },
   es: {
+    self_order: 'Autopedido',
     not_permitted: 'Sin permiso', login_to_access: 'Iniciá sesión para ver esta pantalla.', login: 'Iniciar sesión',
     no_active_orders: 'No hay pedidos activos en {production}', confirm: 'Confirmar', serve: 'Servir',
     aggregator: 'Agregador', aggregator_id: 'ID agregador', order: 'Pedido', old_qty: 'Cant. anterior', takeaway: 'Para llevar',
@@ -24,6 +26,7 @@ const T = {
     username: 'Usuario:', password: 'Contraseña:', sign_in: 'Entrar',
   },
   pt: {
+    self_order: 'Autoatendimento',
     not_permitted: 'Sem permissão', login_to_access: 'Faça login para ver esta tela.', login: 'Entrar',
     no_active_orders: 'Não há pedidos ativos em {production}', confirm: 'Confirmar', serve: 'Servir',
     aggregator: 'Agregador', aggregator_id: 'ID agregador', order: 'Pedido', old_qty: 'Qtd. anterior', takeaway: 'Para viagem',
@@ -35,6 +38,7 @@ const T = {
     username: 'Usuário:', password: 'Senha:', sign_in: 'Entrar',
   },
   'zh-TW': {
+    self_order: '自助點餐',
     not_permitted: '無權限', login_to_access: '請登入以檢視此頁面。', login: '登入',
     no_active_orders: '{production} 目前沒有進行中的訂單', confirm: '確認', serve: '出餐',
     aggregator: '外送平台', aggregator_id: '平台單號', order: '訂單', old_qty: '原數量', takeaway: '外帶',
@@ -46,6 +50,7 @@ const T = {
     username: '帳號：', password: '密碼：', sign_in: '登入',
   },
   zh: {
+    self_order: '自助点餐',
     not_permitted: '无权限', login_to_access: '请登录以查看此页面。', login: '登录',
     no_active_orders: '{production} 目前没有进行中的订单', confirm: '确认', serve: '出餐',
     aggregator: '外卖平台', aggregator_id: '平台单号', order: '订单', old_qty: '原数量', takeaway: '外带',
