@@ -1,3 +1,4 @@
+import re
 import frappe
 
 
@@ -20,7 +21,7 @@ def set_order_number(doc, event):
 
         current_invoice = doc.name
 
-        current_invoice_number = int(current_invoice[-5:])
+        current_invoice_number = int(re.sub(r"-\d+$", "", current_invoice)[-5:])  # amended names end in -1, -2…
 
         order_number = current_invoice_number - last_invoice_number
         if order_number > 0:
