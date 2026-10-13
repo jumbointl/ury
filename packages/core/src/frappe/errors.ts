@@ -28,6 +28,8 @@ export function parseFrappeError(err: unknown, fallback = 'An unexpected error o
   // Helper to sanitize HTML markup into readable multiline text
   const cleanHtml = (str: string): string => {
     return str
+      // Frappe escapes the markup in some messages (&lt;strong&gt;…): decode before stripping tags
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<\/p>/gi, '\n')
       .replace(/<[^>]*>/g, '')
