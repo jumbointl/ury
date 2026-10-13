@@ -5,6 +5,7 @@ import { formatCurrency, formatMoney, localeFor, call, parseFrappeError } from '
 import { Button, Input, Dialog, DialogContent, showToast } from '@ury/ui';
 import { DEFAULT_PAYMENT_MODE } from '../data/order-types';
 import { t } from '../i18n';
+import { printOrder } from '../lib/print';
 
 /**
  * Multimoneda (app `multimoneda` de Frappe): el cajero puede recibir cada medio de pago en otra moneda.
@@ -270,6 +271,16 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
         table,
       });
       showToast.success(t('payment.success', { amount: formatCurrency(paymentsTotal) }));
+      // «Imprimir recibo al completar» del Perfil de POS: la FE (KuDE) sale sola al cobrar, como en Floreant.
+      const perfil = usePOSStore.getState().posProfile;
+      if (perfil?.print_receipt_on_order_complete && perfil.print_type === 'network') {
+        try {
+          await printOrder({ orderId: invoice, posProfile: perfil });
+        } catch (e) {
+          console.warn('No se pudo imprimir el recibo al cobrar:', e);
+          showToast.error(t('errors.print_failed'));
+        }
+      }
       onClose();
       clearSelectedOrder();
       await fetchOrders();

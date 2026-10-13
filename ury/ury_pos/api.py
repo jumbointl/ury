@@ -732,6 +732,7 @@ def getPosProfile():
         enable_discount = pos_profiles.custom_enable_discount
         multiple_cashier = pos_profiles.custom_enable_multiple_cashier
         edit_order_type = pos_profiles.custom_edit_order_type
+        print_receipt_on_order_complete = frappe.utils.cint(get_cashier.get("print_receipt_on_order_complete"))
         enable_kot_reprint = pos_profiles.custom_enable_kot_reprint
         if multiple_cashier:
             details = getBranchRoom()
@@ -810,6 +811,7 @@ def getPosProfile():
         "multiple_cashier":multiple_cashier,
         "owner":owner,
         "edit_order_type":edit_order_type,
+        "print_receipt_on_order_complete": print_receipt_on_order_complete,
         "enable_kot_reprint":enable_kot_reprint
 
     }

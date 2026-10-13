@@ -19,6 +19,7 @@ export interface PosProfileLimited {
   disable_rounded_total: number;
   enable_discount: number;
   multiple_cashier: number;
+  print_receipt_on_order_complete?: number;
   owner: string;
   edit_order_type?: number;
 }
@@ -82,6 +83,7 @@ export interface PosProfileCombined extends PosProfileFull {
   disable_rounded_total: number;
   enable_discount: number;
   multiple_cashier: number;
+  print_receipt_on_order_complete?: number;
   edit_order_type?: number;
   view_all_status?: number;
   custom_daily_pos_close?: number;
@@ -134,6 +136,7 @@ export async function getCombinedPosProfile(): Promise<PosProfileCombined> {
     disable_rounded_total: limitedProfile.disable_rounded_total,
     enable_discount: limitedProfile.enable_discount,
     multiple_cashier: limitedProfile.multiple_cashier,
+    print_receipt_on_order_complete: limitedProfile.print_receipt_on_order_complete,
     edit_order_type: limitedProfile.edit_order_type,
   };
 
