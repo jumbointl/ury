@@ -42,6 +42,8 @@ export interface POSInvoice {
   no_of_pax?: number;
   custom_comments?: string | null;
   modified?: string;
+  /** caja_pos: para llevar / delivery marcado como entregado */
+  entregado?: number;
 }
 
 export interface TableOrder {

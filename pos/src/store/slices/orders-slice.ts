@@ -30,6 +30,9 @@ export interface POSInvoice {
   custom_merged_total?: number | null;
   additional_discount_percentage?: number;
   discount_amount?: number;
+  docstatus?: number;
+  /** caja_pos: para llevar / delivery marcado como entregado */
+  entregado?: number;
 }
 
 export interface OrdersState {
