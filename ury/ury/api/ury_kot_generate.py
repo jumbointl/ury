@@ -129,12 +129,19 @@ def process_items_for_kot(
 
     if productions:
         all_production_item_groups = get_all_production_item_groups(pos_profile.branch)
-        
+        # Default production unit (caja_pos custom field "unidad_por_defecto"): items whose item group
+        # is not assigned to any unit go there instead of silently getting no KOT (Pablo 13-10-2026).
+        default_unit = None
+        if frappe.db.has_column("URY Production Unit", "unidad_por_defecto"):
+            default_unit = frappe.db.get_value(
+                "URY Production Unit", {"branch": pos_profile.branch, "unidad_por_defecto": 1}, "name"
+            )
+
         # Iterate through each item and check if item group belongs to a production unit
         for item in kot_items:
             item_group = frappe.db.get_value("Item", item["item_code"], "item_group")
             item_code = item["item_code"]
-            if item_group not in all_production_item_groups:
+            if item_group not in all_production_item_groups and not default_unit:
                 frappe.msgprint(
                     f"Item group '{item_group}' for item '{item_code}' is not in any production."
                 )
@@ -154,8 +161,11 @@ def process_items_for_kot(
             production_items = [
                 item
                 for item in kot_items
-                if frappe.db.get_value("Item", item["item_code"], "item_group")
-                in productionItemGroups
+                if frappe.db.get_value("Item", item["item_code"], "item_group") in productionItemGroups
+                or (
+                    production.name == default_unit
+                    and frappe.db.get_value("Item", item["item_code"], "item_group") not in all_production_item_groups
+                )
             ]
 
             if production_items:
