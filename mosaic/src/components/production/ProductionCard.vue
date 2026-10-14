@@ -1,10 +1,12 @@
 <template>
   <div
     @click="!disabled && $emit('open')"
+    :tabindex="disabled ? -1 : 0"
+    @keydown.enter="!disabled && $emit('open')"
     :class="{
       'opacity-50 blur-[1px] cursor-not-allowed': disabled
     }"
-    class="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer p-5"
+    class="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer p-5 tv-focus"
   >
     <!-- Header -->
     <div class="flex items-center gap-3">

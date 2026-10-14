@@ -47,9 +47,11 @@
       <div v-for="kot in this.kot" :key="kot.name">
         <div
           :class="[kot.color]"
-          class="inline-block shadow-lg gap-4 p-3 rounded-2xl w-90 h-auto masonry-item"
+          class="inline-block shadow-lg gap-4 p-3 rounded-2xl w-90 h-auto masonry-item tv-focus"
           style="margin-top: 28px"
           v-if="!kot.showDiv && kot.production === production"
+          tabindex="0"
+          @keydown.enter.self="rotateCard(kot)"
         >
           <div class="w-64 check">
             <div

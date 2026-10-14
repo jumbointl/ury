@@ -2,3 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 	
+/* TV / control remoto (mosaic_tv): que se vea dónde está parado el foco del D-pad.
+   Las tarjetas (tabindex=0, Enter = girar/abrir) y los botones Servido/Confirmar. */
+@layer base {
+  .tv-focus:focus-visible,
+  button:focus-visible {
+    outline: 5px solid #f59e0b;
+    outline-offset: 3px;
+    box-shadow: 0 0 0 9px rgba(245, 158, 11, 0.35);
+  }
+  button:focus-visible {
+    outline-offset: 2px;
+  }
+}
