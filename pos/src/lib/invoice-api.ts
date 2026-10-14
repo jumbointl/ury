@@ -31,6 +31,7 @@ export interface POSInvoice {
   custom_merged_total?: number | null;
   discount_amount?: number;
   additional_discount_percentage?: number;
+  docstatus?: number;
 }
 
 export interface SplitGroupInvoice extends POSInvoice {
