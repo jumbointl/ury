@@ -9,6 +9,15 @@ PERMISSION_KEYS = {
 }
 
 permissions_map = {
+	# Pantalla de cocina/barra (Mosaic, app de TV mosaic_tv): usuario de sitio sin escritorio, sólo lee lo que
+	# kot_list necesita y escribe el estado del KOT (serve_kot / confirm_cancel_kot). URY KOT y URY Production
+	# Unit llevan el permiso en su propio JSON.
+	"URY Mosaic": [
+		("Branch", {"permlevel": 0, "select": 1, "read": 1}),
+		("POS Invoice", {"permlevel": 0, "select": 1, "read": 1}),
+		("POS Profile", {"permlevel": 0, "select": 1, "read": 1}),
+	],
+
 	"URY Captain": [
 		("Account", {"permlevel": 0, "select": 1, "read": 1}),
 		("Accounts Settings", {"permlevel": 0, "select": 1, "read": 1}),
@@ -217,6 +226,16 @@ def setup_role_permissions():
 			apply_permissions(doctype, role, perms)
 
 	frappe.clear_cache()
+
+def setup_mosaic_permissions():
+	"""after_migrate: idempotente, para que el rol de la pantalla de cocina exista con sus permisos en todo sitio."""
+	if not frappe.db.exists("Role", "URY Mosaic"):
+		frappe.get_doc({"doctype": "Role", "role_name": "URY Mosaic", "desk_access": 0}).insert(ignore_permissions=True)
+	for doctype, perms in permissions_map["URY Mosaic"]:
+		apply_permissions(doctype, "URY Mosaic", perms)
+	frappe.db.commit()
+	frappe.clear_cache()
+
 
 def apply_permissions(doctype, role, perms):
 	permlevel = perms.get("permlevel", 0)
