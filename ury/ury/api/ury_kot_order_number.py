@@ -10,7 +10,7 @@ def _numero(nombre):
 
 
 def set_order_number(doc, event):
-    if doc.get("is_return"):
+    if doc.flags.de_sync or doc.get("is_return"):
         return  # una devolución no es un pedido nuevo: no lleva número de orden
     pos_profile = doc.pos_profile
     if doc.order_type == "Aggregators":

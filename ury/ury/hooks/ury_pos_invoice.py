@@ -5,6 +5,8 @@ from ury.ury.doctype.ury_order.ury_order import release_merge_cluster_tables
 
 
 def before_insert(doc, method):
+    if doc.flags.de_sync:
+        return  # copia de otra sucursal (sucursal_sync): sin numerar, mesas ni impresión acá
     pos_invoice_naming(doc, method)
     order_type_update(doc, method)
     restrict_existing_order(doc, method)
@@ -17,6 +19,8 @@ def validate(doc, method):
 
 
 def before_submit(doc, method):
+    if doc.flags.de_sync:
+        return  # copia de otra sucursal (sucursal_sync): sin numerar, mesas ni impresión acá
     calculate_and_set_times(doc, method)
     validate_invoice_print(doc, method)
     ro_reload_submit(doc, method)
@@ -298,10 +302,14 @@ def sync_merged_invoice(doc):
 
 
 def on_update(doc, method):
+    if doc.flags.de_sync:
+        return  # copia de otra sucursal (sucursal_sync): sin numerar, mesas ni impresión acá
     sync_merged_invoice(doc)
 
 
 def on_submit(doc, method):
+    if doc.flags.de_sync:
+        return  # copia de otra sucursal (sucursal_sync): sin numerar, mesas ni impresión acá
     sync_merged_invoice(doc)
     release_merged_tables(doc)
 
