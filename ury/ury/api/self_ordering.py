@@ -427,12 +427,20 @@ def get_customer_product(session, item_code):
 
     return {
         "item_code": item.item_code,
-        "item_name": item.item_name,
-        "description": item.description if profile.show_item_descriptions else None,
+        # Nombre/descripción traducidos al idioma del cliente (form_dict._lang); el código no cambia.
+        "item_name": _(item.item_name) if item.item_name else item.item_name,
+        "description": _translate_plain(item.description) if profile.show_item_descriptions else None,
         "image": item.image if profile.show_item_images else None,
         "variants": variants,
         "addons": addons,
     }
+
+
+def _translate_plain(text):
+    """Translate an Item description only when it is plain text (the Text Editor field may hold HTML)."""
+    if not text:
+        return text
+    return text if "<" in text else _(text)
 
 
 def _linked_item_options(child_doctype, parent_item_code, invoice_price_list):
@@ -457,7 +465,7 @@ def _linked_item_options(child_doctype, parent_item_code, invoice_price_list):
             )
         options.append({
             "item_code": linked.item_code,
-            "item_name": linked.item_name,
+            "item_name": _(linked.item_name) if linked.item_name else linked.item_name,
             "image": linked.image,
             "rate": price,
         })
@@ -480,7 +488,8 @@ def _sanitize_invoice_for_customer(invoice):
         "items": [
             {
                 "item_code": row.item_code,
-                "item_name": row.item_name,
+                # Sólo para mostrar: la POS Invoice, el KOT y el KuDE guardan el nombre en español.
+                "item_name": _(row.item_name) if row.item_name else row.item_name,
                 "qty": row.qty,
                 "comment": row.comment,
                 "rate": row.rate,

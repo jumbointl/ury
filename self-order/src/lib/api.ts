@@ -1,5 +1,10 @@
 import { call, storage } from '@ury/core'
-import { setSiteLanguage } from './i18n'
+import { currentLanguage, setSiteLanguage } from './i18n'
+
+// Idioma del cliente en cada llamada: Frappe lo toma de form_dict._lang (frappe.translate.get_language)
+// y así los nombres de plato/categoría/descripción vuelven traducidos (tabla Translation, cargada
+// desde la ficha de Item / URY Menu Course). La factura, el KOT y el KuDE siguen en español.
+const L = () => ({ _lang: currentLanguage() })
 
 const M = 'ury.ury.api.self_ordering'
 
@@ -153,13 +158,14 @@ interface FrappeResponse<T> {
 }
 
 export async function bootstrap(token: string): Promise<OrderingContext> {
-  const response = await call.get<FrappeResponse<OrderingContext>>(`${M}.get_ordering_context`, { token })
+  const response = await call.get<FrappeResponse<OrderingContext>>(`${M}.get_ordering_context`, { ...L(), token })
   storeContext(response.message)
   return response.message
 }
 
 export async function bootstrapDevice(deviceId: string, deviceCredential: string): Promise<OrderingContext> {
   const response = await call.get<FrappeResponse<OrderingContext>>(`${M}.get_ordering_context`, {
+    ...L(),
     device_id: deviceId,
     device_credential: deviceCredential,
   })
@@ -174,6 +180,7 @@ export async function assignDeviceTable(
   table: string,
 ): Promise<OrderingContext> {
   const response = await call.post<FrappeResponse<OrderingContext>>(`${M}.assign_device_table`, {
+    ...L(),
     device_id: deviceId,
     device_credential: deviceCredential,
     staff_pin: staffPin,
@@ -184,12 +191,12 @@ export async function assignDeviceTable(
 }
 
 export async function getMenu(session: string): Promise<MenuResponse> {
-  const response = await call.get<FrappeResponse<MenuResponse>>(`${M}.get_customer_menu`, { session })
+  const response = await call.get<FrappeResponse<MenuResponse>>(`${M}.get_customer_menu`, { ...L(), session })
   return response.message
 }
 
 export async function getCurrentOrder(session: string): Promise<CustomerOrder> {
-  const response = await call.get<FrappeResponse<CustomerOrder>>(`${M}.get_customer_order`, { session })
+  const response = await call.get<FrappeResponse<CustomerOrder>>(`${M}.get_customer_order`, { ...L(), session })
   return response.message
 }
 
@@ -198,6 +205,7 @@ export async function addItems(
   items: { item: string; qty: number; comment?: string }[],
 ): Promise<CustomerOrder> {
   const response = await call.post<FrappeResponse<CustomerOrder>>(`${M}.add_customer_items`, {
+    ...L(),
     session,
     items: JSON.stringify(items),
   })
@@ -234,17 +242,18 @@ export interface CustomerLookup {
 }
 
 export async function lookupCustomer(session: string, documento: string): Promise<CustomerLookup> {
-  const response = await call.get<FrappeResponse<CustomerLookup>>(`${M}.lookup_customer`, { session, documento })
+  const response = await call.get<FrappeResponse<CustomerLookup>>(`${M}.lookup_customer`, { ...L(), session, documento })
   return response.message
 }
 
 export async function searchCities(session: string, q: string): Promise<CityOption[]> {
-  const response = await call.get<FrappeResponse<CityOption[]>>(`${M}.search_cities`, { session, q })
+  const response = await call.get<FrappeResponse<CityOption[]>>(`${M}.search_cities`, { ...L(), session, q })
   return response.message
 }
 
 export async function requestBill(session: string, data?: BillData): Promise<BillRequestResult> {
   const response = await call.post<FrappeResponse<BillRequestResult>>(`${M}.request_bill`, {
+    ...L(),
     session,
     documento: data?.documento || '',
     nombre: data?.nombre || '',
@@ -256,7 +265,7 @@ export async function requestBill(session: string, data?: BillData): Promise<Bil
 }
 
 export async function getStatus(session: string): Promise<OrderStatus> {
-  const response = await call.get<FrappeResponse<OrderStatus>>(`${M}.get_order_status`, { session })
+  const response = await call.get<FrappeResponse<OrderStatus>>(`${M}.get_order_status`, { ...L(), session })
   return response.message
 }
 
@@ -275,12 +284,12 @@ export interface PaymentStatusResult {
 }
 
 export async function createPaymentRequest(session: string): Promise<PaymentRequestResult> {
-  const response = await call.post<FrappeResponse<PaymentRequestResult>>(`${M}.create_payment_request`, { session })
+  const response = await call.post<FrappeResponse<PaymentRequestResult>>(`${M}.create_payment_request`, { ...L(), session })
   return response.message
 }
 
 export async function getPaymentStatus(session: string): Promise<PaymentStatusResult> {
-  const response = await call.get<FrappeResponse<PaymentStatusResult>>(`${M}.get_payment_status`, { session })
+  const response = await call.get<FrappeResponse<PaymentStatusResult>>(`${M}.get_payment_status`, { ...L(), session })
   return response.message
 }
 
@@ -290,7 +299,7 @@ export async function sharePaymentLink(
 ): Promise<{ status: string; payment_request: string }> {
   const response = await call.post<FrappeResponse<{ status: string; payment_request: string }>>(
     `${M}.share_payment_link`,
-    { session, recipient },
+    { ...L(), session, recipient },
   )
   return response.message
 }
