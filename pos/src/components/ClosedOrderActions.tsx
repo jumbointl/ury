@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { call, formatCurrency, parseFrappeError } from '@ury/core';
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, Input, showToast } from '@ury/ui';
 import { CustomerPicker } from './CustomerPicker';
-import type { Customer } from '../lib/customer-api';
+import type { Customer } from '../store/pos-store';
 import { t } from '../i18n';
 
 /**
@@ -65,9 +65,9 @@ export function ClienteDialog({ open, onOpenChange, invoice, onDone }: ClienteDi
     if (!customer) return;
     setBusy(true); setError(null);
     try {
-      const r = unwrap(await call.post('caja_pos.api.corregir_cliente', { invoice, customer: customer.name, motivo }));
+      const r = unwrap(await call.post('caja_pos.api.corregir_cliente', { invoice, customer: customer.id, motivo }));
       showToast.success(r?.accion === 'nominar'
-        ? t('closed.nominated', { customer: customer.customer_name || customer.name })
+        ? t('closed.nominated', { customer: customer.name || customer.id })
         : t('closed.amended', { invoice: r?.factura || '', numero: r?.sifen_numero || '' }));
       onOpenChange(false);
       await onDone();
