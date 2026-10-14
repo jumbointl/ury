@@ -1,9 +1,13 @@
 import frappe
 
 def before_save(doc, method):
+    if doc.flags.de_sync:
+        return  # copia de otra sucursal (sucursal_sync)
     sub_pos_close_check(doc, method)
 
 def validate(doc, method):
+    if doc.flags.de_sync:
+        return  # copia de otra sucursal (sucursal_sync)
     calculate_closing_amount(doc, method)
     validate_cashier(doc, method)
 

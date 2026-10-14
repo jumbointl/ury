@@ -13,6 +13,8 @@ from frappe.utils import  get_datetime,now
 
 class SubPOSClosing(Document):
     def validate(self):
+        if self.flags.de_sync:
+            return  # copia de otra sucursal (sucursal_sync): viaja con sus facturas y montos ya calculados
         owner = None
         branch = frappe.db.get_value("POS Profile", self.pos_profile, "branch")
 
