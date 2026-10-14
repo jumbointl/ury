@@ -184,6 +184,7 @@
     "checklist_skip": "Pular por agora",
     "checklist_skip_hint": "O fechamento já foi confirmado. Você pode completar a lista depois.",
     "by_currency": "Contagem por moeda",
+    "total_principal": "Total na moeda principal",
     "by_mode": "Por forma de pagamento",
     "help_by_currency": "Conte o dinheiro de cada moeda. O fechamento de cada forma de pagamento é calculado com essas contagens.",
     "col_mode": "Forma de pagamento",

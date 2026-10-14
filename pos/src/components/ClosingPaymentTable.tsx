@@ -50,6 +50,17 @@ const ClosingPaymentTable: React.FC<ClosingPaymentTableProps> = ({
   onCurrencyChange,
 }) => {
   const byCurrency = !!currencyRows && currencyRows.length > 0 && !!onCurrencyChange;
+  // Resumen en la moneda principal (Pablo 13-10-2026): se cuenta por moneda, se cierra en una sola.
+  const sumCur = (fn: (r: ClosingCurrencyRow) => number) => (currencyRows ?? []).reduce((acc, r) => acc + fn(r), 0);
+  const curExpected = sumCur((r) => r.esperado_principal);
+  const curCounted = sumCur((r) => r.contado * r.cotizacion);
+  const sumRows = (fn: (r: ClosingPaymentSummary) => number) => rows.reduce((acc, r) => acc + fn(r), 0);
+  const totalOpening = sumRows((r) => r.opening_amount);
+  const totalExpected = sumRows((r) => r.expected_amount);
+  const totalClosing = sumRows((r) => r.closing_amount);
+  const totalCell = (v: number) => (
+    <td className={cn('py-3 px-4 text-right font-semibold', Math.abs(v) > 0.001 ? 'text-red-600' : 'text-green-600')}>{formatCurrency(v)}</td>
+  );
 
   return (
     <div className="w-full overflow-x-auto space-y-6">
@@ -120,6 +131,14 @@ const ClosingPaymentTable: React.FC<ClosingPaymentTableProps> = ({
                 );
               })}
             </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-gray-300 bg-gray-50">
+                <td className="py-3 px-4 font-semibold text-gray-900" colSpan={2}>{t('pos_closing.total_principal')}</td>
+                <td className="py-3 px-4 text-right font-semibold text-gray-900">{formatCurrency(curExpected)}</td>
+                <td className="py-3 px-4 text-center font-semibold text-gray-900">{formatCurrency(curCounted)}</td>
+                {totalCell(curCounted - curExpected)}
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
@@ -192,6 +211,15 @@ const ClosingPaymentTable: React.FC<ClosingPaymentTableProps> = ({
               );
             })}
           </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-gray-300 bg-gray-50">
+              <td className="py-3 px-4 font-semibold text-gray-900">{t('pos_closing.total_principal')}</td>
+              <td className="py-3 px-4 text-right font-semibold text-gray-900">{formatCurrency(totalOpening)}</td>
+              <td className="py-3 px-4 text-right font-semibold text-gray-900">{formatCurrency(totalExpected)}</td>
+              <td className="py-3 px-4 text-center font-semibold text-gray-900">{formatCurrency(totalClosing)}</td>
+              {totalCell(totalClosing - totalExpected)}
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>

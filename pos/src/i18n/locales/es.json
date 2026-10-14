@@ -184,6 +184,7 @@
     "checklist_skip": "Saltar por ahora",
     "checklist_skip_hint": "El cierre ya se confirmó. Podés completar la lista después.",
     "by_currency": "Arqueo por moneda",
+    "total_principal": "Total en moneda principal",
     "by_mode": "Por medio de pago",
     "help_by_currency": "Contá el efectivo de cada moneda. El cierre de cada medio de pago se calcula con estos conteos.",
     "col_mode": "Medio de pago",

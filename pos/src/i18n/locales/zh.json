@@ -184,6 +184,7 @@
     "checklist_skip": "暂时跳过",
     "checklist_skip_hint": "关账已提交，检查表可稍后完成。",
     "by_currency": "按币种清点",
+    "total_principal": "主币种合计",
     "by_mode": "按付款方式",
     "help_by_currency": "清点每种币种的现金。各付款方式的结账金额由这些清点数计算。",
     "col_mode": "付款方式",
