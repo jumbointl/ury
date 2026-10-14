@@ -91,6 +91,8 @@ def set_order_number(doc, event):
 
 
 def set_last_invoice_in_pos_open(doc, event):
+    if doc.flags.de_sync:
+        return
     try:
         invoice = frappe.get_last_doc(
             "POS Invoice", filters={"pos_profile": doc.pos_profile,"order_type": ["!=", "Aggregators"]}

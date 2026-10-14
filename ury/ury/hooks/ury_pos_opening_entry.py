@@ -3,9 +3,13 @@ from frappe.utils import today
 from frappe.utils import  get_datetime,today,now
 
 def validate(doc,method):
+    if doc.flags.de_sync:
+        return  # copia de otra sucursal (sucursal_sync)
     set_cashier_room(doc,method)
     
 def before_save(doc, method):
+    if doc.flags.de_sync:
+        return  # copia de otra sucursal (sucursal_sync)
     main_pos_open_check(doc, method)
     set_current_time(doc,method)
     
