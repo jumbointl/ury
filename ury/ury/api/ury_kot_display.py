@@ -25,6 +25,12 @@ def serve_kot(name, time=None):
     frappe.db.set_value("URY KOT", name, "start_time_serv", server_time_str)
     frappe.db.set_value("URY KOT", name, "production_time", production_time_minutes)
     frappe.db.set_value("URY KOT", name, "order_status", "Served")
+    # Otras apps (llamador: pantalla de entrega) se enteran por el hook `kot_servido`; db_set no dispara doc_events.
+    for fn in frappe.get_hooks("kot_servido"):
+        try:
+            frappe.get_attr(fn)(kot=name)
+        except Exception:
+            frappe.log_error(title="kot_servido hook", message=frappe.get_traceback())
 
 
 # Function to mark it as verified in a cancel type KOT.
