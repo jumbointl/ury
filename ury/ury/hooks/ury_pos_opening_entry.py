@@ -10,7 +10,10 @@ def validate(doc,method):
 def before_save(doc, method):
     if doc.flags.de_sync:
         return  # copia de otra sucursal (sucursal_sync)
-    main_pos_open_check(doc, method)
+    if not doc.flags.caja_web:
+        # ⭐ monalisa: la caja web de sifen_py (cobros con tarjeta/PIX del autopedido) abre sola a las 04:00, sin cajero
+        # principal: no depende de que él haya abierto (sifen_py/caja_web.py).
+        main_pos_open_check(doc, method)
     set_current_time(doc,method)
     
     
