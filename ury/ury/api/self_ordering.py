@@ -1043,7 +1043,8 @@ def create_payment_request(session):
         if "sifen_py" in frappe.get_installed_apps() and frappe.db.get_single_value("Dlocal Settings", "habilitado"):
             from sifen_py.pagos import solicitud_pos
 
-            pr_name = solicitud_pos(invoice.name)
+            # Back to the self-order page when the payment ends (Pablo, 18-10): the page that called us.
+            pr_name = solicitud_pos(invoice.name, volver=frappe.get_request_header("Referer"))
             frappe.db.commit()
             pr = frappe.get_doc("Payment Request", pr_name)
             return {
