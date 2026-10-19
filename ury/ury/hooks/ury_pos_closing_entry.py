@@ -3,11 +3,15 @@ import frappe
 def before_save(doc, method):
     if doc.flags.de_sync:
         return  # copia de otra sucursal (sucursal_sync)
+    if doc.flags.caja_web:
+        return  # monalisa: la caja web de sifen_py (cobros con tarjeta/PIX) cierra sola, sin cajero principal ni subcajeros
     sub_pos_close_check(doc, method)
 
 def validate(doc, method):
     if doc.flags.de_sync:
         return  # copia de otra sucursal (sucursal_sync)
+    if doc.flags.caja_web:
+        return  # monalisa: sin efectivo que contar; sifen_py.caja_web pone lo cerrado = lo esperado
     calculate_closing_amount(doc, method)
     validate_cashier(doc, method)
 
