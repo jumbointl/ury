@@ -1037,6 +1037,23 @@ def create_payment_request(session):
         if invoice.docstatus == 1:
             frappe.throw(_("This order is already settled"), frappe.ValidationError)
 
+        # ⭐ monalisa (18-10): with sifen_py the payment is dLocal Go card or PIX Sttart. sifen_py builds the
+        # Payment Request for the draft POS Invoice (ERPNext's make_payment_request can't price one) and, once
+        # approved, its web cashier settles the invoice (sifen_py.caja_web). The page offers card and PIX.
+        if "sifen_py" in frappe.get_installed_apps() and frappe.db.get_single_value("Dlocal Settings", "habilitado"):
+            from sifen_py.pagos import solicitud_pos
+
+            pr_name = solicitud_pos(invoice.name)
+            frappe.db.commit()
+            pr = frappe.get_doc("Payment Request", pr_name)
+            return {
+                "payment_request": pr.name,
+                "amount": pr.grand_total,
+                "currency": pr.currency,
+                "payment_url": frappe.utils.get_url(f"/dlocal/pagar?pr={pr.name}"),
+                "status": pr.status,
+            }
+
         # make_payment_request() derives its own amount from the reference
         # doc server-side (get_amount()) — the client never supplies one.
         #
